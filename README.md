@@ -1,69 +1,99 @@
-# HNavas Systems — Agent & Contact Backend
+# HNavas Systems — Agent & Contact API (`hnavas-api`)
 
-Small **backend-driven** service for the website's AI chat agent and contact form.
-Runs locally with Express and deploys to **AWS Lambda** (Function URL) via `serverless-http`.
+Backend for the [HNavas Systems](https://github.com/diegomur09/hnavas-web) website:
+an **AI chat agent** and a **contact** endpoint. It's **backend-driven** — the
+OpenAI API key lives only on the server, never in the browser or the repo. Runs
+locally with Express and on **AWS Lambda** (Function URL) via `serverless-http`.
 
-## Why a backend (key safety)
+## Links
 
-The OpenAI API key is a **secret**. It lives **only here, on the server** — in
-`backend/.env` locally, and in the Lambda's environment variables in production.
-
-- The browser/frontend **never** sees the key. It only knows this service's URL
-  (`NEXT_PUBLIC_AGENT_URL`), which is just an address, not a secret.
-- `.env` is git-ignored, so keys are never committed.
-- Every model call goes **through this backend** — the frontend talks to `/chat`,
-  this service adds the key and calls OpenAI. That's the whole point of the split.
-
-```
-Browser ──fetch──▶  /chat (this backend, holds the key)  ──▶  OpenAI
-   ▲                                                            │
-   └────────────────────  reply (no key ever exposed)  ◀───────┘
-```
+| | |
+|---|---|
+| Backend / API repo | https://github.com/diegomur09/hnavas-api |
+| Frontend repo | https://github.com/diegomur09/hnavas-web |
+| API (QA) | `https://tfpo7fqoszogi2qtznsxuhblb40kmyzt.lambda-url.us-east-1.on.aws` |
+| API (Production) | `https://vvbwtcwlds3irp4ubw2b4cumaq0oumrl.lambda-url.us-east-1.on.aws` |
 
 ## Endpoints
 
-| Method | Path       | Body                              | Notes |
-|--------|------------|-----------------------------------|-------|
-| GET    | `/health`  | —                                 | `{ ok, agent: "ready" \| "not-configured" }` |
-| POST   | `/chat`    | `{ messages: [{role,content}], locale }` | Returns `{ reply }`. Rate-limited. |
-| POST   | `/contact` | `{ name, email, project }`        | Logs the lead (SES wiring is the next step). |
+| Method | Path       | Body                                       | Returns |
+|--------|------------|--------------------------------------------|---------|
+| GET    | `/health`  | —                                          | `{ ok, agent }` |
+| POST   | `/chat`    | `{ messages: [{role,content}], locale }`   | `{ reply }` |
+| POST   | `/contact` | `{ name, email, project }`                 | `{ ok: true }` |
 
-Model: **`gpt-4o-mini`** (cheapest reliable option). Override with `AGENT_MODEL`.
-Built-in guards: per-IP rate limit (20 req / 10 min), history capped to 12 turns,
-replies capped at 400 tokens — so the token budget stays bounded.
+Model: **`gpt-4o-mini`** (cheapest reliable option; override with `AGENT_MODEL`).
+Guards: per-IP rate limit (20 req / 10 min), history capped to 12 turns, replies
+capped at 400 tokens — so the token budget stays bounded.
 
-## Run locally
+## System design
 
-```bash
-cd backend
-npm install
-cp .env.example .env        # then put your OPENAI_API_KEY in .env
-node --env-file=.env src/local.js   # or: npm run dev  (after exporting env vars)
-# → http://localhost:3001/health
+**Runtime architecture**
+
+```
+                       Visitor (browser)
+                        │              │
+            static page │              │ JSON: POST /chat, /contact
+              requests   │              │
+                         ▼              ▼
+          ┌────────────────────┐   ┌──────────────────────────────┐
+          │  CloudFront → S3   │   │  Lambda Function URL          │
+          │  (hnavas-web,      │   │  hnavas-api (Node + Express)  │
+          │  Next.js static)   │   │        │                      │
+          └────────────────────┘   │        ▼                      │
+                                    │  OpenAI API (gpt-4o-mini)     │
+                                    └──────────────────────────────┘
 ```
 
-Then point the frontend at it: in `frontend/.env.local` set
-`NEXT_PUBLIC_AGENT_URL=http://localhost:3001`.
+**Key safety (why a backend at all)**
 
-**No key?** That's fine for reviewers: leave `OPENAI_API_KEY` unset (or skip the
-backend entirely) and the site's chat falls back to its built-in demo replies.
+```
+  Browser ──fetch──▶  /chat  ──▶  this API (holds the key)  ──▶  OpenAI
+     ▲                                                            │
+     └────────────────  reply (the key is never exposed)  ◀───────┘
+```
 
-## Deploy to AWS Lambda (cheapest path)
+The OpenAI key lives **only** in the Lambda's environment (or `.env` locally,
+which is git-ignored). The browser only knows the API's URL — an address, not a
+secret. The CI deploy role can update code but **cannot read or change** the
+Lambda's environment, so the key never touches GitHub or CI.
 
-The frontend stays static on S3 + CloudFront; this backend is one Lambda.
+**CI/CD (GitHub Actions + OIDC — no AWS keys stored in GitHub)**
 
-1. Package: `npm ci --omit=dev` then zip the folder (`src/`, `node_modules/`,
-   `package.json`).
-2. Create a Node.js 20 Lambda; handler = `src/lambda.handler`.
-3. Add a **Function URL** (Auth type: NONE) — no API Gateway needed, and it's free.
-4. Set the Lambda's **environment variables** (this is where the key lives in prod):
-   - `OPENAI_API_KEY` = your key
-   - `ALLOWED_ORIGINS` = `https://hnavasystems.com,https://www.hnavasystems.com`
-5. Put the Function URL into the frontend's `NEXT_PUBLIC_AGENT_URL` and redeploy.
+```
+  git push ──┬── qa ───▶ GitHub Actions ──OIDC──▶ aws lambda update-function-code
+             │                                     → hnavas-agent-api-qa
+             └── main ─▶ GitHub Actions ──OIDC──▶ aws lambda update-function-code
+                                                   → hnavas-agent-api
+```
 
-Reviewers then just open the live site — the agent works, and the key stays
-safely in the Lambda's environment, never in anything they can see.
+## Tech stack
+
+Node.js 22 (ESM) · Express · `serverless-http` · OpenAI SDK. Runs on **AWS Lambda**
+with a public **Function URL**, deployed by **GitHub Actions** via OIDC.
+
+## Environments
+
+Branch-based: `main` = production, `qa` = testing — each with its **own** Lambda and
+its **own** OpenAI key. See [ENVIRONMENTS.md](./ENVIRONMENTS.md).
+
+## Local development
+
+```bash
+npm install
+cp .env.example .env                 # put your OPENAI_API_KEY in .env (git-ignored)
+node --env-file=.env src/local.js    # http://localhost:3001/health
+```
+
+No key? Leave `OPENAI_API_KEY` unset and the site's chat falls back to demo replies.
+
+## Deployment
+
+CI/CD deploys **code** on every push (`qa` → QA Lambda, `main` → production Lambda).
+The secrets (`OPENAI_API_KEY`, `ALLOWED_ORIGINS`) are set once on each Lambda's
+environment — never in this repo, never in CI.
 
 ## Next steps
+
 - Wire Amazon SES into `/contact` so leads arrive by email (currently logged).
-- Optionally move rate-limit state to DynamoDB if you run many concurrent Lambdas.
+- Tighten `ALLOWED_ORIGINS` from `*` to the live CloudFront domains.
