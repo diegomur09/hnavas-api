@@ -1,0 +1,44 @@
+name: CI
+
+# main = production, qa = testing environment.
+on:
+  push:
+    branches: [main, qa]
+  pull_request:
+    branches: [main, qa]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Syntax-check every source file (no API key needed, never calls OpenAI).
+      - run: |
+          for f in src/*.js; do node --check "$f"; done
+
+  # --- Deploy (wire up once AWS infra + secrets exist) ---------------------
+  # deploy:
+  #   needs: build
+  #   if: github.event_name == 'push'
+  #   runs-on: ubuntu-latest
+  #   environment: ${{ github.ref_name == 'main' && 'production' || 'qa' }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with: { node-version: 22 }
+  #     - run: npm ci --omit=dev && zip -r function.zip src node_modules package.json
+  #     - uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE }}
+  #         aws-region: us-east-1
+  #     # main -> hnavas-agent-api ; qa -> hnavas-agent-api-qa
+  #     - run: |
+  #         FN=${{ github.ref_name == 'main' && 'hnavas-agent-api' || 'hnavas-agent-api-qa' }}
+  #         aws lambda update-function-code --function-name "$FN" --zip-file fileb://function.zip
+  #   # OPENAI_API_KEY + ALLOWED_ORIGINS are set on each Lambda's env (per
+  #   # environment), NOT here in the repo.
