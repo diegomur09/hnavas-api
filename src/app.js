@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
 import { generateReply, isConfigured } from "./agent.js";
+import { emailLead } from "./tools.js";
+import { isEmail } from "./email.js";
 
 export const app = express();
 
@@ -69,14 +71,26 @@ app.post("/contact", async (req, res) => {
   if (rateLimited(clientIp(req))) {
     return res.status(429).json({ error: "rate-limited" });
   }
-  const { name, email, project } = req.body ?? {};
+  const { name, email, project, locale } = req.body ?? {};
   if (!name || !email || !project) {
     return res.status(400).json({ error: "missing-fields" });
   }
+  if (!isEmail(email)) {
+    return res.status(400).json({ error: "invalid-email" });
+  }
 
-  // Lead capture. Wiring Amazon SES here is the next step; for now we log it so
-  // nothing is lost (the frontend also has a mailto fallback). See README.
-  console.log("CONTACT LEAD:", JSON.stringify({ name, email, project }));
+  // Same path as the agent's crear_lead tool: email Diego + acknowledge the
+  // client (branded). emailLead is defensive, so the form never errors on email.
+  try {
+    await emailLead({
+      name: String(name).slice(0, 120),
+      email: String(email).slice(0, 200),
+      project: String(project).slice(0, 2000),
+      locale,
+    });
+  } catch (err) {
+    console.error("contact emailLead failed:", err?.message ?? err);
+  }
   res.json({ ok: true });
 });
 

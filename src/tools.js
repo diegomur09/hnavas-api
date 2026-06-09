@@ -15,7 +15,7 @@
 // `{ ok: false, error }` so the agent can recover gracefully in conversation.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { sendEmail, NOTIFY_EMAIL, isEmail } from "./email.js";
+import { sendEmail, renderEmail, NOTIFY_EMAIL, isEmail } from "./email.js";
 
 const CONTACT_EMAIL = "hnavasystems@gmail.com";
 
@@ -101,9 +101,56 @@ export const TOOL_SCHEMAS = [
   },
 ];
 
+// ─── Lead emailing (shared by the crear_lead tool AND the /contact form) ─────
+// Sends the branded notification to Diego (Reply-To = client) plus a localized
+// acknowledgement to the client. Inputs are assumed already validated.
+export async function emailLead({ name, email, project, locale }) {
+  console.log("CONTACT LEAD:", JSON.stringify({ name, email, project }));
+
+  // Notify Diego — replying to this email replies straight to the client.
+  const notifyBody = renderEmail({
+    heading: `New lead: ${name}`,
+    preheader: `${name} wants: ${project}`,
+    paragraphs: [`Project: ${project}`, "Reply to this email to reach the client directly."],
+    details: [
+      { label: "Name", value: name },
+      { label: "Email", value: email },
+    ],
+  });
+  const notify = await sendEmail({
+    to: NOTIFY_EMAIL,
+    replyTo: email,
+    subject: `New lead from the website: ${name}`,
+    html: notifyBody.html,
+    text: notifyBody.text,
+  });
+
+  // Acknowledge the client (in their language), branded like the site.
+  const ackBody = renderEmail({
+    heading: t(locale, `Thanks, ${name}!`, `¡Gracias, ${name}!`),
+    preheader: t(locale, "Diego received your project details.", "Diego recibió los detalles de tu proyecto."),
+    paragraphs: [
+      t(
+        locale,
+        "Thanks for reaching out to HNavas Systems. Diego received your project details and will get back to you, usually within a day.",
+        "Gracias por contactar a HNavas Systems. Diego recibió los detalles de tu proyecto y te responderá, normalmente en un día.",
+      ),
+      `“${project}”`,
+      t(locale, "You can reply to this email anytime.", "Puedes responder a este correo cuando quieras."),
+    ],
+  });
+  await sendEmail({
+    to: email,
+    subject: t(locale, "Thanks — Diego will be in touch", "Gracias — Diego te contactará"),
+    html: ackBody.html,
+    text: ackBody.text,
+  });
+
+  return { emailed: notify.ok };
+}
+
 // ─── Executor: crear_lead ────────────────────────────────────────────────────
-// Captures the lead AND emails it: a notification to Diego (Reply-To set to the
-// client so he can answer directly) plus an acknowledgement to the client.
+// Validates, then emails the lead (same path the contact form uses).
 async function execCrearLead(args, { locale } = {}) {
   const name = String(args?.name ?? "").trim().slice(0, 120);
   const email = String(args?.email ?? "").trim().slice(0, 200);
@@ -116,30 +163,10 @@ async function execCrearLead(args, { locale } = {}) {
     return { ok: false, error: "invalid-email" };
   }
 
-  console.log("CONTACT LEAD (via agent tool):", JSON.stringify({ name, email, project }));
-
-  // Notify Diego — replying to this email replies straight to the client.
-  const notify = await sendEmail({
-    to: NOTIFY_EMAIL,
-    replyTo: email,
-    subject: `New lead from the website: ${name}`,
-    text: `New lead captured by the AI agent.\n\nName: ${name}\nEmail: ${email}\nProject: ${project}\n\nReply to this email to reach the client directly.`,
-  });
-
-  // Acknowledge the client (in their language).
-  await sendEmail({
-    to: email,
-    subject: t(locale, "Thanks — Diego will be in touch", "Gracias — Diego te contactará"),
-    text: t(
-      locale,
-      `Hi ${name},\n\nThanks for reaching out to HNavas Systems. Diego received your project details:\n\n"${project}"\n\nHe'll get back to you, usually within a day. You can reply to this email anytime.\n\n— HNavas Systems`,
-      `Hola ${name},\n\nGracias por contactar a HNavas Systems. Diego recibió los detalles de tu proyecto:\n\n"${project}"\n\nTe responderá, normalmente en un día. Puedes responder a este correo cuando quieras.\n\n— HNavas Systems`,
-    ),
-  });
-
+  const { emailed } = await emailLead({ name, email, project, locale });
   return {
     ok: true,
-    emailed: notify.ok,
+    emailed,
     message: "Lead saved and emailed to Diego; the client received a confirmation.",
   };
 }
@@ -244,27 +271,52 @@ async function execAgendarReunion(args, { locale } = {}) {
   console.log("MEETING REQUEST (via agent tool):", JSON.stringify({ name, email, preferred, topic }));
 
   const calUrl = CALENDAR_URL;
-  const calLine = calUrl
-    ? t(locale, `\n\nPrefer to pick an exact slot now? Book here: ${calUrl}`, `\n\n¿Prefieres elegir un horario exacto ya? Reserva aquí: ${calUrl}`)
-    : "";
 
   // Notify Diego (replying reaches the client directly).
+  const notifyBody = renderEmail({
+    heading: `Meeting request: ${name}`,
+    preheader: `${preferred} — ${topic}`,
+    paragraphs: ["Reply to this email to confirm with the client."],
+    details: [
+      { label: "Name", value: name },
+      { label: "Email", value: email },
+      { label: "Preferred time", value: preferred },
+      { label: "Topic", value: topic },
+    ],
+  });
   const notify = await sendEmail({
     to: NOTIFY_EMAIL,
     replyTo: email,
     subject: `Meeting request: ${name}`,
-    text: `Meeting requested via the AI agent.\n\nName: ${name}\nEmail: ${email}\nPreferred time: ${preferred}\nTopic: ${topic}\n\nReply to this email to confirm with the client.`,
+    html: notifyBody.html,
+    text: notifyBody.text,
   });
 
-  // Confirm to the client (their language).
+  // Confirm to the client (their language), branded, with a booking button.
+  const confirmBody = renderEmail({
+    heading: t(locale, "Your meeting request", "Tu solicitud de reunión"),
+    preheader: t(locale, "Diego will confirm the time shortly.", "Diego confirmará el horario en breve."),
+    paragraphs: [
+      t(
+        locale,
+        `Hi ${name}, thanks! We received your request to meet. Diego will confirm the final time by email shortly.`,
+        `Hola ${name}, ¡gracias! Recibimos tu solicitud de reunión. Diego te confirmará el horario final por correo en breve.`,
+      ),
+      calUrl
+        ? t(locale, "Prefer to pick an exact slot now? Use the button below.", "¿Prefieres elegir un horario exacto ya? Usa el botón de abajo.")
+        : "",
+    ].filter(Boolean),
+    details: [
+      { label: t(locale, "Topic", "Tema"), value: topic },
+      { label: t(locale, "Preferred time", "Horario preferido"), value: preferred },
+    ],
+    button: calUrl ? { label: t(locale, "Book a time", "Reservar horario"), url: calUrl } : undefined,
+  });
   await sendEmail({
     to: email,
     subject: t(locale, "Your meeting request — HNavas Systems", "Tu solicitud de reunión — HNavas Systems"),
-    text: t(
-      locale,
-      `Hi ${name},\n\nThanks! We received your request to meet about ${topic}.\nPreferred time: ${preferred}\n\nDiego will confirm the final time by email shortly.${calLine}\n\n— HNavas Systems`,
-      `Hola ${name},\n\n¡Gracias! Recibimos tu solicitud de reunión sobre ${topic}.\nHorario preferido: ${preferred}\n\nDiego te confirmará el horario final por correo en breve.${calLine}\n\n— HNavas Systems`,
-    ),
+    html: confirmBody.html,
+    text: confirmBody.text,
   });
 
   return {
