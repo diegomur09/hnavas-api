@@ -29,8 +29,8 @@ export const CHUNKS = [
   {
     id: "brand",
     category: "brand",
-    en: "HNavas Systems is the studio of Diego Navas Murcia, a bilingual (English/Spanish) Full-Stack & Cloud Engineer based in Denver / Broomfield, Colorado, with three years building software that runs in production. He works natively with AWS (Lambda, DynamoDB, SES, S3, CloudFront, Cognito, API Gateway) and builds automation directly against the Claude and OpenAI APIs. Being bilingual EN/ES lets him serve Denver's businesses and its Hispanic market without losing anything in translation. Contact: diegomurcia2@gmail.com.",
-    es: "HNavas Systems es el estudio de Diego Navas Murcia, ingeniero Full-Stack & Cloud bilingüe (inglés/español) basado en Denver / Broomfield, Colorado, con tres años construyendo software que corre en producción. Trabaja de forma nativa con AWS (Lambda, DynamoDB, SES, S3, CloudFront, Cognito, API Gateway) y construye automatización directamente contra las APIs de Claude y OpenAI. Ser bilingüe EN/ES le permite atender a los negocios de Denver y a su mercado hispano sin perder nada en la traducción. Contacto: diegomurcia2@gmail.com.",
+    en: "HNavas Systems is the studio of Diego Navas Murcia, a bilingual (English/Spanish) Full-Stack & Cloud Engineer based in Denver / Broomfield, Colorado, with three years building software that runs in production. He works natively with AWS (Lambda, DynamoDB, SES, S3, CloudFront, Cognito, API Gateway) and builds automation directly against the Claude and OpenAI APIs. Being bilingual EN/ES lets him serve Denver's businesses and its Hispanic market without losing anything in translation. Contact: hnavasystems@gmail.com.",
+    es: "HNavas Systems es el estudio de Diego Navas Murcia, ingeniero Full-Stack & Cloud bilingüe (inglés/español) basado en Denver / Broomfield, Colorado, con tres años construyendo software que corre en producción. Trabaja de forma nativa con AWS (Lambda, DynamoDB, SES, S3, CloudFront, Cognito, API Gateway) y construye automatización directamente contra las APIs de Claude y OpenAI. Ser bilingüe EN/ES le permite atender a los negocios de Denver y a su mercado hispano sin perder nada en la traducción. Contacto: hnavasystems@gmail.com.",
   },
 
   // ── Production footprint / headline stats ─────────────────────────────────
@@ -173,7 +173,7 @@ export const CHUNKS = [
   {
     id: "contact",
     category: "process",
-    en: "To start a project, the visitor can leave their name, email and a short description of what they want to build through the contact form, or email diegomurcia2@gmail.com directly. Diego works in English or Spanish and usually replies within a day.",
-    es: "Para iniciar un proyecto, el visitante puede dejar su nombre, email y una breve descripción de lo que quiere construir a través del formulario de contacto, o escribir directamente a diegomurcia2@gmail.com. Diego trabaja en inglés o español y normalmente responde en un día.",
+    en: "To start a project, the visitor can leave their name, email and a short description of what they want to build through the contact form, or email hnavasystems@gmail.com directly. Diego works in English or Spanish and usually replies within a day.",
+    es: "Para iniciar un proyecto, el visitante puede dejar su nombre, email y una breve descripción de lo que quiere construir a través del formulario de contacto, o escribir directamente a hnavasystems@gmail.com. Diego trabaja en inglés o español y normalmente responde en un día.",
   },
 ];

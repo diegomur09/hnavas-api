@@ -15,7 +15,16 @@
 // `{ ok: false, error }` so the agent can recover gracefully in conversation.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CONTACT_EMAIL = "diegomurcia2@gmail.com";
+import { sendEmail, NOTIFY_EMAIL, isEmail } from "./email.js";
+
+const CONTACT_EMAIL = "hnavasystems@gmail.com";
+
+// Public Cal.com booking link (not a secret) — defaulted in code so no Lambda
+// env var is needed. Override with CALENDAR_URL if it ever changes.
+const CALENDAR_URL = process.env.CALENDAR_URL?.trim() || "https://cal.com/diego-navas-murcia-6a7b9n";
+
+// Tiny localized strings for the client-facing emails (mirror the chat locale).
+const t = (locale, en, es) => (locale === "es" ? es : en);
 
 // ── Schemas shown to the model ───────────────────────────────────────────────
 // Keep descriptions action-oriented so the model knows WHEN to call each one.
@@ -64,16 +73,38 @@ export const TOOL_SCHEMAS = [
     function: {
       name: "agendar_llamada",
       description:
-        "Provide the way to book a call or appointment with Diego. Call this when a visitor wants to schedule a meeting, book a call, or talk to Diego directly.",
+        "Share HOW to book a call (the scheduling link or email) when the visitor is just asking how to reach Diego but isn't ready to give details yet. If they ARE ready to book, prefer agendar_reunion.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "agendar_reunion",
+      description:
+        "Request and confirm a meeting with Diego when the visitor is ready to book one. Collect their name, email, a preferred date/time in their own words (e.g. 'Tuesday afternoon', 'next week'), and the topic. It emails a confirmation to the visitor and notifies Diego, who locks in the final time.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "The visitor's name." },
+          email: { type: "string", description: "The visitor's email address." },
+          preferred_time: {
+            type: "string",
+            description: "Their preferred date/time, in their own words.",
+          },
+          topic: { type: "string", description: "What the meeting is about." },
+        },
+        required: ["name", "email", "preferred_time"],
+        additionalProperties: false,
+      },
     },
   },
 ];
 
 // ─── Executor: crear_lead ────────────────────────────────────────────────────
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function execCrearLead(args) {
+// Captures the lead AND emails it: a notification to Diego (Reply-To set to the
+// client so he can answer directly) plus an acknowledgement to the client.
+async function execCrearLead(args, { locale } = {}) {
   const name = String(args?.name ?? "").trim().slice(0, 120);
   const email = String(args?.email ?? "").trim().slice(0, 200);
   const project = String(args?.project ?? "").trim().slice(0, 2000);
@@ -81,14 +112,36 @@ function execCrearLead(args) {
   if (!name || !email || !project) {
     return { ok: false, error: "missing-fields", need: ["name", "email", "project"] };
   }
-  if (!EMAIL_RE.test(email)) {
+  if (!isEmail(email)) {
     return { ok: false, error: "invalid-email" };
   }
 
-  // Lead capture. Same sink as POST /contact (logged for now; SES is the
-  // documented next step). The frontend also keeps a mailto fallback.
   console.log("CONTACT LEAD (via agent tool):", JSON.stringify({ name, email, project }));
-  return { ok: true, message: "Lead saved. Diego will follow up, usually within a day." };
+
+  // Notify Diego — replying to this email replies straight to the client.
+  const notify = await sendEmail({
+    to: NOTIFY_EMAIL,
+    replyTo: email,
+    subject: `New lead from the website: ${name}`,
+    text: `New lead captured by the AI agent.\n\nName: ${name}\nEmail: ${email}\nProject: ${project}\n\nReply to this email to reach the client directly.`,
+  });
+
+  // Acknowledge the client (in their language).
+  await sendEmail({
+    to: email,
+    subject: t(locale, "Thanks — Diego will be in touch", "Gracias — Diego te contactará"),
+    text: t(
+      locale,
+      `Hi ${name},\n\nThanks for reaching out to HNavas Systems. Diego received your project details:\n\n"${project}"\n\nHe'll get back to you, usually within a day. You can reply to this email anytime.\n\n— HNavas Systems`,
+      `Hola ${name},\n\nGracias por contactar a HNavas Systems. Diego recibió los detalles de tu proyecto:\n\n"${project}"\n\nTe responderá, normalmente en un día. Puedes responder a este correo cuando quieras.\n\n— HNavas Systems`,
+    ),
+  });
+
+  return {
+    ok: true,
+    emailed: notify.ok,
+    message: "Lead saved and emailed to Diego; the client received a confirmation.",
+  };
 }
 
 // ─── Executor: consultar_github ──────────────────────────────────────────────
@@ -171,15 +224,54 @@ async function execConsultarGithub(args) {
 // Returns a booking link from env (CALENDAR_URL, e.g. a Cal.com link) when set,
 // otherwise falls back to email scheduling. Works today; drop in the link later.
 function execAgendarLlamada() {
-  const url = process.env.CALENDAR_URL?.trim();
-  if (url) {
-    return { ok: true, method: "link", schedulingUrl: url, email: CONTACT_EMAIL };
+  return { ok: true, method: "link", schedulingUrl: CALENDAR_URL, email: CONTACT_EMAIL };
+}
+
+// ─── Executor: agendar_reunion ───────────────────────────────────────────────
+// Records a meeting request and emails both sides. If CALENDAR_URL (e.g. a
+// Cal.com link) is set, the client email also offers instant self-booking.
+async function execAgendarReunion(args, { locale } = {}) {
+  const name = String(args?.name ?? "").trim().slice(0, 120);
+  const email = String(args?.email ?? "").trim().slice(0, 200);
+  const preferred = String(args?.preferred_time ?? "").trim().slice(0, 300);
+  const topic = String(args?.topic ?? "").trim().slice(0, 500) || t(locale, "an intro call", "una llamada inicial");
+
+  if (!name || !email || !preferred) {
+    return { ok: false, error: "missing-fields", need: ["name", "email", "preferred_time"] };
   }
+  if (!isEmail(email)) return { ok: false, error: "invalid-email" };
+
+  console.log("MEETING REQUEST (via agent tool):", JSON.stringify({ name, email, preferred, topic }));
+
+  const calUrl = CALENDAR_URL;
+  const calLine = calUrl
+    ? t(locale, `\n\nPrefer to pick an exact slot now? Book here: ${calUrl}`, `\n\n¿Prefieres elegir un horario exacto ya? Reserva aquí: ${calUrl}`)
+    : "";
+
+  // Notify Diego (replying reaches the client directly).
+  const notify = await sendEmail({
+    to: NOTIFY_EMAIL,
+    replyTo: email,
+    subject: `Meeting request: ${name}`,
+    text: `Meeting requested via the AI agent.\n\nName: ${name}\nEmail: ${email}\nPreferred time: ${preferred}\nTopic: ${topic}\n\nReply to this email to confirm with the client.`,
+  });
+
+  // Confirm to the client (their language).
+  await sendEmail({
+    to: email,
+    subject: t(locale, "Your meeting request — HNavas Systems", "Tu solicitud de reunión — HNavas Systems"),
+    text: t(
+      locale,
+      `Hi ${name},\n\nThanks! We received your request to meet about ${topic}.\nPreferred time: ${preferred}\n\nDiego will confirm the final time by email shortly.${calLine}\n\n— HNavas Systems`,
+      `Hola ${name},\n\n¡Gracias! Recibimos tu solicitud de reunión sobre ${topic}.\nHorario preferido: ${preferred}\n\nDiego te confirmará el horario final por correo en breve.${calLine}\n\n— HNavas Systems`,
+    ),
+  });
+
   return {
     ok: true,
-    method: "email",
-    email: CONTACT_EMAIL,
-    note: "No online scheduler is configured yet; ask the visitor to email Diego to set a time.",
+    emailed: notify.ok,
+    bookingUrl: calUrl || undefined,
+    message: "Meeting request emailed to the client and Diego; Diego will confirm the final time.",
   };
 }
 
@@ -195,11 +287,13 @@ export async function executeTool(name, args, ctx = {}) {
   try {
     switch (name) {
       case "crear_lead":
-        return execCrearLead(args);
+        return await execCrearLead(args, ctx);
       case "consultar_github":
         return await execConsultarGithub(args);
       case "agendar_llamada":
         return execAgendarLlamada();
+      case "agendar_reunion":
+        return await execAgendarReunion(args, ctx);
       default:
         return { ok: false, error: "unknown-tool", name };
     }

@@ -65,13 +65,16 @@ result back, the model phrases the reply (trip 2).
 
 | Tool | Does | Setup |
 |------|------|-------|
-| `crear_lead` | Records a lead (name, email, project) mid-conversation; same sink as `POST /contact`. | None |
+| `crear_lead` | Records a lead (name, email, project) and **emails it** — notifies Diego (Reply-To = the client) and sends the client a confirmation. | SES (verified `hnavasystems.com`) |
+| `agendar_reunion` | Books a meeting request (name, email, preferred time, topic); emails a confirmation to the client (with the Cal.com link) and notifies Diego. | SES + `CALENDAR_URL` |
+| `agendar_llamada` | Shares the Cal.com booking link / how to reach Diego. | `CALENDAR_URL` (defaulted in code) |
 | `consultar_github` | Returns Diego's live public GitHub profile + recent repos (cached 10 min). | None — works tokenless; set `GITHUB_TOKEN` for a higher rate limit |
-| `agendar_llamada` | Shares the booking link (`CALENDAR_URL`) or falls back to email scheduling. | None — set `CALENDAR_URL` to enable a real scheduler |
 
-All tool env vars are **optional** (see `.env.example`); every executor is
-defensive and returns `{ ok: false, error }` instead of throwing, so a failing
-tool degrades into a graceful in-chat message.
+Emails go through **Amazon SES** (`src/email.js`) from `noreply@hnavasystems.com`
+(DKIM-signed); the Lambda role needs `ses:SendEmail`. Config defaults live in code
+(no Lambda env var needed). Every executor is defensive and returns
+`{ ok: false, error }` instead of throwing, so a failing tool (or email) degrades
+into a graceful in-chat message.
 
 ## System design
 
