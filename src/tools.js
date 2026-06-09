@@ -26,6 +26,13 @@ const CALENDAR_URL = process.env.CALENDAR_URL?.trim() || "https://cal.com/diego-
 // Tiny localized strings for the client-facing emails (mirror the chat locale).
 const t = (locale, en, es) => (locale === "es" ? es : en);
 
+// Mask an email for logs so we don't write PII in plain text to CloudWatch.
+// "diego@gmail.com" -> "d***@gmail.com"
+const maskEmail = (e) => {
+  const [user, domain] = String(e ?? "").split("@");
+  return domain ? `${user.slice(0, 1)}***@${domain}` : "***";
+};
+
 // ── Schemas shown to the model ───────────────────────────────────────────────
 // Keep descriptions action-oriented so the model knows WHEN to call each one.
 export const TOOL_SCHEMAS = [
@@ -105,7 +112,7 @@ export const TOOL_SCHEMAS = [
 // Sends the branded notification to Diego (Reply-To = client) plus a localized
 // acknowledgement to the client. Inputs are assumed already validated.
 export async function emailLead({ name, email, project, locale }) {
-  console.log("CONTACT LEAD:", JSON.stringify({ name, email, project }));
+  console.log("CONTACT LEAD captured:", maskEmail(email));
 
   // Notify Diego — replying to this email replies straight to the client.
   const notifyBody = renderEmail({
@@ -268,7 +275,7 @@ async function execAgendarReunion(args, { locale } = {}) {
   }
   if (!isEmail(email)) return { ok: false, error: "invalid-email" };
 
-  console.log("MEETING REQUEST (via agent tool):", JSON.stringify({ name, email, preferred, topic }));
+  console.log("MEETING REQUEST captured:", maskEmail(email));
 
   const calUrl = CALENDAR_URL;
 
