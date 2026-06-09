@@ -9,11 +9,12 @@ locally with Express and on **AWS Lambda** (Function URL) via `serverless-http`.
 
 | | Web (Frontend) | API (Backend) |
 |---|---|---|
-| **Producción** | https://d6o054dnj9ven.cloudfront.net/en | https://vvbwtcwlds3irp4ubw2b4cumaq0oumrl.lambda-url.us-east-1.on.aws/health |
+| **Producción** | https://hnavasystems.com | https://vvbwtcwlds3irp4ubw2b4cumaq0oumrl.lambda-url.us-east-1.on.aws/health |
 | **QA** | https://dpfbof69kqlws.cloudfront.net/en | https://tfpo7fqoszogi2qtznsxuhblb40kmyzt.lambda-url.us-east-1.on.aws/health |
 
-> Production custom domain `hnavasystems.com` is pending (DNS not pointed yet).
-> The API links open `/health` (a status check) — the API is a service, not a web page.
+> Production is live on the custom domain `hnavasystems.com` (apex + www → CloudFront,
+> HTTPS via ACM). The API links open `/health` (a status check) — the API is a service,
+> not a web page.
 
 ## Endpoints
 

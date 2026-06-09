@@ -56,8 +56,8 @@ app.post("/chat", async (req, res) => {
   }
 
   try {
-    const { messages, locale } = req.body ?? {};
-    const reply = await generateReply({ messages, locale });
+    const { messages, locale, visitorId } = req.body ?? {};
+    const reply = await generateReply({ messages, locale, visitorId });
     res.json({ reply });
   } catch (err) {
     console.error("chat error:", err?.message ?? err);
