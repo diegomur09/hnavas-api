@@ -8,15 +8,24 @@ export const app = express();
 
 app.use(express.json({ limit: "64kb" }));
 
-// CORS: lock to the site origin(s) in prod via ALLOWED_ORIGINS (comma-separated).
-// Defaults to "*" so reviewers can run it without config.
-const allowed = (process.env.ALLOWED_ORIGINS ?? "*")
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
+// CORS. The site's own origins are ALWAYS allowed (defaulted in code) so the
+// custom domain works regardless of the ALLOWED_ORIGINS env var — which only
+// listed a CloudFront URL and broke requests from hnavasystems.com. Extra
+// origins can still be added via ALLOWED_ORIGINS (comma-separated); "*" or no
+// value allows everything (local/dev convenience).
+const SITE_ORIGINS = [
+  "https://hnavasystems.com",
+  "https://www.hnavasystems.com",
+  "https://d6o054dnj9ven.cloudfront.net", // prod CloudFront
+  "https://dpfbof69kqlws.cloudfront.net", // qa CloudFront
+];
+const envRaw = process.env.ALLOWED_ORIGINS;
+const envOrigins = (envRaw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+const allowAll = !envRaw || envOrigins.includes("*");
+const allowed = [...new Set([...SITE_ORIGINS, ...envOrigins.filter((o) => o !== "*")])];
 app.use(
   cors({
-    origin: allowed.includes("*") ? true : allowed,
+    origin: allowAll ? true : allowed,
     methods: ["POST", "GET", "OPTIONS"],
   }),
 );
