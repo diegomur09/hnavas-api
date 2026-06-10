@@ -163,6 +163,50 @@ export const CHUNKS = [
     es: "Proyecto — Baychata (baychatafestival.com, 2025), un rediseño completo en WordPress con renovación de plugins y optimización de rendimiento: bajó el LCP de 14.9s a 4.6s y subió el PageSpeed móvil de 46 a 72 eliminando ~182 KiB de CSS bloqueante. Stack: WordPress, PHP, plugins, Core Web Vitals.",
   },
 
+  // ── About Diego (recruiter / hiring context) ──────────────────────────────
+  {
+    id: "profile",
+    category: "profile",
+    en: "About Diego (recruiter/hiring context): Diego Alejandro Navas Murcia is a Full-Stack & Cloud Engineer and founder/lead developer of HNavas Systems, with about 3 years of experience (early/mid-career). Based in Broomfield, Denver metro, Colorado. Native Spanish, professional English. Open to full-stack, frontend, backend and AI-integration roles — remote or Denver-area hybrid, contract or full-time. LinkedIn: linkedin.com/in/diegonamu. GitHub: github.com/diegomur09.",
+    es: "Sobre Diego (contexto reclutador/contratación): Diego Alejandro Navas Murcia es Ingeniero Full-Stack & Cloud y fundador/desarrollador principal de HNavas Systems, con unos 3 años de experiencia (inicio/media carrera). Vive en Broomfield, área metropolitana de Denver, Colorado. Español nativo, inglés profesional. Abierto a roles full-stack, frontend, backend e integración de IA — remoto o híbrido en Denver, por contrato o tiempo completo. LinkedIn: linkedin.com/in/diegonamu. GitHub: github.com/diegomur09.",
+  },
+  {
+    id: "skills-frontend-backend",
+    category: "profile",
+    en: "Diego's frontend & backend/cloud skills: React, Next.js, TypeScript, JavaScript (ES6+), Tailwind CSS, Framer Motion, responsive design, WCAG accessibility, Elementor. Backend/cloud: AWS (Lambda, API Gateway, DynamoDB, S3, SES, CloudFront, CloudWatch, Cognito, Route 53), Python/FastAPI, Node.js, REST APIs, WebSocket, serverless and event-driven architecture. Core languages: JavaScript, TypeScript, Python, SQL.",
+    es: "Habilidades frontend y backend/cloud de Diego: React, Next.js, TypeScript, JavaScript (ES6+), Tailwind CSS, Framer Motion, diseño responsive, accesibilidad WCAG, Elementor. Backend/cloud: AWS (Lambda, API Gateway, DynamoDB, S3, SES, CloudFront, CloudWatch, Cognito, Route 53), Python/FastAPI, Node.js, APIs REST, WebSocket, arquitectura serverless y orientada a eventos. Lenguajes principales: JavaScript, TypeScript, Python, SQL.",
+  },
+  {
+    id: "skills-ai-devops",
+    category: "profile",
+    en: "Diego's AI, payments and DevOps skills: AI/automation on the Claude and OpenAI APIs, prompt engineering, LLM-powered automation, webhook pipelines, self-hosted n8n, Twilio SMS. Payments: Square and Stripe (subscriptions, reliable webhooks). DevOps & tools: Docker, Docker Compose, Nginx, SSL, Linux, Bash, Git, GitHub Actions (CI/CD), AWS CDK. SEO/performance: Core Web Vitals, JSON-LD, RankMath, Google Business Profile, local SEO.",
+    es: "Habilidades de IA, pagos y DevOps de Diego: IA/automatización sobre las APIs de Claude y OpenAI, prompt engineering, automatización con LLM, pipelines de webhooks, n8n auto-alojado, Twilio SMS. Pagos: Square y Stripe (suscripciones, webhooks confiables). DevOps y herramientas: Docker, Docker Compose, Nginx, SSL, Linux, Bash, Git, GitHub Actions (CI/CD), AWS CDK. SEO/rendimiento: Core Web Vitals, JSON-LD, RankMath, Google Business Profile, SEO local.",
+  },
+  {
+    id: "experience",
+    category: "profile",
+    en: "Diego's experience. Co-Founder & Lead Developer at Dynamic Dance Company LLC (Feb 2024–present): co-founded the company and built/operates its entire AWS platform — scaled 0 to 200+ customers (160 active students) and $51K processed (864 transactions) in 9 months; built the Square payments + SES email + Lambda engine; diagnosed and fixed 178 failed payment webhooks (missing Lambda signature keys); built Claude/OpenAI automation for lead capture (100+ inbound leads); the studio site ranks #2 on Google for 'bachata classes Denver'. Also an Independent Cloud & Full-Stack Consultant (Jun 2023–present) for service, automotive and hospitality clients.",
+    es: "Experiencia de Diego. Co-Fundador y Desarrollador Principal en Dynamic Dance Company LLC (feb 2024–presente): co-fundó la empresa y construyó/opera toda su plataforma en AWS — escaló de 0 a 200+ clientes (160 estudiantes activos) y $51K procesados (864 transacciones) en 9 meses; construyó el motor de pagos Square + email SES + Lambda; diagnosticó y arregló 178 webhooks de pago fallidos (faltaban llaves de firma en Lambda); construyó automatización con Claude/OpenAI para captura de leads (100+ leads entrantes); el sitio del estudio rankea #2 en Google para 'bachata classes Denver'. También Consultor independiente Cloud & Full-Stack (jun 2023–presente) para clientes de servicios, automotriz y hospitalidad.",
+  },
+  {
+    id: "education-certs",
+    category: "profile",
+    en: "Diego's education & certifications: Software Engineering Bootcamp at TripleTen (full-stack, Jan 2024–present); AWS Certified Solutions Architect – Associate (in progress, 2026); Google Career Certificate in Cybersecurity (2023); Fundamentals of Cybersecurity & Python 3 (Codecademy); B.S. in Civil Engineering, Pontificia Bolivariana University, Bucaramanga, Colombia.",
+    es: "Educación y certificaciones de Diego: Bootcamp de Ingeniería de Software en TripleTen (full-stack, ene 2024–presente); AWS Certified Solutions Architect – Associate (en progreso, 2026); Certificado profesional de Ciberseguridad de Google (2023); Fundamentos de Ciberseguridad y Python 3 (Codecademy); Ingeniería Civil, Universidad Pontificia Bolivariana, Bucaramanga, Colombia.",
+  },
+  {
+    id: "recruiter-faq",
+    category: "profile",
+    en: "Honest answers to recruiter questions about Diego (never overstate): Experience level — about 3 years, early/mid-career; his edge is shipping real production products with real users and metrics, not years. Kubernetes — no production K8s experience; he uses Docker and Docker Compose and is ready to ramp up. Testing/TDD — a growth area he is actively building; he writes tests and is deepening TDD and code-review habits. Observability — uses AWS CloudWatch in production; eager to pick up Datadog. C++/game engines — not his background; he is a web/full-stack & cloud engineer. Availability — Denver metro (Broomfield), open to remote or hybrid, contract or full-time. Salary — aligned with the Colorado mid-level market, flexible by role. For anything not covered, offer to connect them with Diego.",
+    es: "Respuestas honestas a preguntas de reclutadores sobre Diego (nunca exagerar): Nivel de experiencia — unos 3 años, inicio/media carrera; su ventaja es haber lanzado productos reales en producción con usuarios y métricas, no los años. Kubernetes — sin experiencia de K8s en producción; usa Docker y Docker Compose y está listo para aprenderlo. Testing/TDD — un área en crecimiento que construye activamente; escribe pruebas y profundiza en TDD y revisión de código. Observabilidad — usa AWS CloudWatch en producción; con ganas de aprender Datadog. C++/motores de juego — no es su área; es ingeniero web/full-stack y cloud. Disponibilidad — área de Denver (Broomfield), abierto a remoto o híbrido, contrato o tiempo completo. Salario — alineado con el mercado mid-level de Colorado, flexible según el rol. Para lo no cubierto, ofrece conectar con Diego.",
+  },
+  {
+    id: "strengths",
+    category: "profile",
+    en: "Diego's strengths and differentiators: ships real, production products end-to-end with real users and metrics (not tutorial projects); strong on AWS serverless, real-time systems, payments and AI/LLM integration; entrepreneurial ownership (built and runs a real business's tech stack); bilingual EN/ES and a clear communicator who explains technology to non-technical people.",
+    es: "Fortalezas y diferenciadores de Diego: lanza productos reales en producción de punta a punta, con usuarios y métricas reales (no proyectos de tutorial); fuerte en serverless de AWS, sistemas en tiempo real, pagos e integración de IA/LLM; mentalidad emprendedora (construyó y opera la tecnología de un negocio real); bilingüe EN/ES y comunicador claro que explica la tecnología a personas no técnicas.",
+  },
+
   // ── Process / pricing / how to start ──────────────────────────────────────
   {
     id: "pricing",
