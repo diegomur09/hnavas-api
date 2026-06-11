@@ -15,60 +15,62 @@
 // `{ ok: false, error }` so the agent can recover gracefully in conversation.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { sendEmail, renderEmail, NOTIFY_EMAIL, isEmail } from "./email.js";
+import {
+  sendEmail, renderEmail, NOTIFY_EMAIL, isEmail,
+} from './email.js';
 
-const CONTACT_EMAIL = "hnavasystems@gmail.com";
+const CONTACT_EMAIL = 'hnavasystems@gmail.com';
 
 // Public Cal.com booking link (not a secret) — defaulted in code so no Lambda
 // env var is needed. Override with CALENDAR_URL if it ever changes.
-const CALENDAR_URL = process.env.CALENDAR_URL?.trim() || "https://cal.com/diego-navas-murcia-6a7b9n";
+const CALENDAR_URL = process.env.CALENDAR_URL?.trim() || 'https://cal.com/diego-navas-murcia-6a7b9n';
 
 // Tiny localized strings for the client-facing emails (mirror the chat locale).
-const t = (locale, en, es) => (locale === "es" ? es : en);
+const t = (locale, en, es) => (locale === 'es' ? es : en);
 
 // Mask an email for logs so we don't write PII in plain text to CloudWatch.
 // "diego@gmail.com" -> "d***@gmail.com"
 const maskEmail = (e) => {
-  const [user, domain] = String(e ?? "").split("@");
-  return domain ? `${user.slice(0, 1)}***@${domain}` : "***";
+  const [user, domain] = String(e ?? '').split('@');
+  return domain ? `${user.slice(0, 1)}***@${domain}` : '***';
 };
 
 // ── Schemas shown to the model ───────────────────────────────────────────────
 // Keep descriptions action-oriented so the model knows WHEN to call each one.
 export const TOOL_SCHEMAS = [
   {
-    type: "function",
+    type: 'function',
     function: {
-      name: "crear_lead",
+      name: 'crear_lead',
       description:
-        "Capture a sales lead when a visitor shares their contact details and what they want to build. Call this as soon as you have a name, an email, and a short project description — it records the lead so Diego can follow up.",
+        'Capture a sales lead when a visitor shares their contact details and what they want to build. Call this as soon as you have a name, an email, and a short project description — it records the lead so Diego can follow up.',
       parameters: {
-        type: "object",
+        type: 'object',
         properties: {
-          name: { type: "string", description: "The visitor's name." },
-          email: { type: "string", description: "The visitor's email address." },
+          name: { type: 'string', description: "The visitor's name." },
+          email: { type: 'string', description: "The visitor's email address." },
           project: {
-            type: "string",
-            description: "A short description of what the visitor wants to build.",
+            type: 'string',
+            description: 'A short description of what the visitor wants to build.',
           },
         },
-        required: ["name", "email", "project"],
+        required: ['name', 'email', 'project'],
         additionalProperties: false,
       },
     },
   },
   {
-    type: "function",
+    type: 'function',
     function: {
-      name: "consultar_github",
+      name: 'consultar_github',
       description:
         "Look up Diego's live, public GitHub activity (profile stats and recent repositories). Call this when a visitor asks about Diego's GitHub, his open-source work, how active he is, or what he has been building lately.",
       parameters: {
-        type: "object",
+        type: 'object',
         properties: {
           limit: {
-            type: "integer",
-            description: "How many recent repositories to return (1-10). Default 5.",
+            type: 'integer',
+            description: 'How many recent repositories to return (1-10). Default 5.',
           },
         },
         additionalProperties: false,
@@ -76,32 +78,32 @@ export const TOOL_SCHEMAS = [
     },
   },
   {
-    type: "function",
+    type: 'function',
     function: {
-      name: "agendar_llamada",
+      name: 'agendar_llamada',
       description:
         "Share HOW to book a call (the scheduling link or email) when the visitor is just asking how to reach Diego but isn't ready to give details yet. If they ARE ready to book, prefer agendar_reunion.",
-      parameters: { type: "object", properties: {}, additionalProperties: false },
+      parameters: { type: 'object', properties: {}, additionalProperties: false },
     },
   },
   {
-    type: "function",
+    type: 'function',
     function: {
-      name: "agendar_reunion",
+      name: 'agendar_reunion',
       description:
         "Request and confirm a meeting with Diego when the visitor is ready to book one. Collect their name, email, a preferred date/time in their own words (e.g. 'Tuesday afternoon', 'next week'), and the topic. It emails a confirmation to the visitor and notifies Diego, who locks in the final time.",
       parameters: {
-        type: "object",
+        type: 'object',
         properties: {
-          name: { type: "string", description: "The visitor's name." },
-          email: { type: "string", description: "The visitor's email address." },
+          name: { type: 'string', description: "The visitor's name." },
+          email: { type: 'string', description: "The visitor's email address." },
           preferred_time: {
-            type: "string",
-            description: "Their preferred date/time, in their own words.",
+            type: 'string',
+            description: 'Their preferred date/time, in their own words.',
           },
-          topic: { type: "string", description: "What the meeting is about." },
+          topic: { type: 'string', description: 'What the meeting is about.' },
         },
-        required: ["name", "email", "preferred_time"],
+        required: ['name', 'email', 'preferred_time'],
         additionalProperties: false,
       },
     },
@@ -111,17 +113,19 @@ export const TOOL_SCHEMAS = [
 // ─── Lead emailing (shared by the crear_lead tool AND the /contact form) ─────
 // Sends the branded notification to Diego (Reply-To = client) plus a localized
 // acknowledgement to the client. Inputs are assumed already validated.
-export async function emailLead({ name, email, project, locale }) {
-  console.log("CONTACT LEAD captured:", maskEmail(email));
+export async function emailLead({
+  name, email, project, locale,
+}) {
+  console.log('CONTACT LEAD captured:', maskEmail(email));
 
   // Notify Diego — replying to this email replies straight to the client.
   const notifyBody = renderEmail({
     heading: `New lead: ${name}`,
     preheader: `${name} wants: ${project}`,
-    paragraphs: [`Project: ${project}`, "Reply to this email to reach the client directly."],
+    paragraphs: [`Project: ${project}`, 'Reply to this email to reach the client directly.'],
     details: [
-      { label: "Name", value: name },
-      { label: "Email", value: email },
+      { label: 'Name', value: name },
+      { label: 'Email', value: email },
     ],
   });
   const notify = await sendEmail({
@@ -135,20 +139,20 @@ export async function emailLead({ name, email, project, locale }) {
   // Acknowledge the client (in their language), branded like the site.
   const ackBody = renderEmail({
     heading: t(locale, `Thanks, ${name}!`, `¡Gracias, ${name}!`),
-    preheader: t(locale, "Diego received your project details.", "Diego recibió los detalles de tu proyecto."),
+    preheader: t(locale, 'Diego received your project details.', 'Diego recibió los detalles de tu proyecto.'),
     paragraphs: [
       t(
         locale,
-        "Thanks for reaching out to HNavas Systems. Diego received your project details and will get back to you, usually within a day.",
-        "Gracias por contactar a HNavas Systems. Diego recibió los detalles de tu proyecto y te responderá, normalmente en un día.",
+        'Thanks for reaching out to HNavas Systems. Diego received your project details and will get back to you, usually within a day.',
+        'Gracias por contactar a HNavas Systems. Diego recibió los detalles de tu proyecto y te responderá, normalmente en un día.',
       ),
       `“${project}”`,
-      t(locale, "You can reply to this email anytime.", "Puedes responder a este correo cuando quieras."),
+      t(locale, 'You can reply to this email anytime.', 'Puedes responder a este correo cuando quieras.'),
     ],
   });
   await sendEmail({
     to: email,
-    subject: t(locale, "Thanks — Diego will be in touch", "Gracias — Diego te contactará"),
+    subject: t(locale, 'Thanks — Diego will be in touch', 'Gracias — Diego te contactará'),
     html: ackBody.html,
     text: ackBody.text,
   });
@@ -159,22 +163,24 @@ export async function emailLead({ name, email, project, locale }) {
 // ─── Executor: crear_lead ────────────────────────────────────────────────────
 // Validates, then emails the lead (same path the contact form uses).
 async function execCrearLead(args, { locale } = {}) {
-  const name = String(args?.name ?? "").trim().slice(0, 120);
-  const email = String(args?.email ?? "").trim().slice(0, 200);
-  const project = String(args?.project ?? "").trim().slice(0, 2000);
+  const name = String(args?.name ?? '').trim().slice(0, 120);
+  const email = String(args?.email ?? '').trim().slice(0, 200);
+  const project = String(args?.project ?? '').trim().slice(0, 2000);
 
   if (!name || !email || !project) {
-    return { ok: false, error: "missing-fields", need: ["name", "email", "project"] };
+    return { ok: false, error: 'missing-fields', need: ['name', 'email', 'project'] };
   }
   if (!isEmail(email)) {
-    return { ok: false, error: "invalid-email" };
+    return { ok: false, error: 'invalid-email' };
   }
 
-  const { emailed } = await emailLead({ name, email, project, locale });
+  const { emailed } = await emailLead({
+    name, email, project, locale,
+  });
   return {
     ok: true,
     emailed,
-    message: "Lead saved and emailed to Diego; the client received a confirmation.",
+    message: 'Lead saved and emailed to Diego; the client received a confirmation.',
   };
 }
 
@@ -182,12 +188,12 @@ async function execCrearLead(args, { locale } = {}) {
 // Username is fixed server-side (never taken from the model) — minimal scope.
 // Works tokenless (public API, 60 req/h). If GITHUB_TOKEN is set it's used for
 // a higher limit (5000 req/h). Results cached in memory to protect the budget.
-const GITHUB_USER = process.env.GITHUB_USER ?? "diegomur09";
+const GITHUB_USER = process.env.GITHUB_USER ?? 'diegomur09';
 const GH_CACHE_MS = 10 * 60 * 1000; // 10 minutes
 let ghCache = { at: 0, data: null };
 
 function ghHeaders() {
-  const h = { Accept: "application/vnd.github+json", "User-Agent": "hnavas-agent" };
+  const h = { Accept: 'application/vnd.github+json', 'User-Agent': 'hnavas-agent' };
   if (process.env.GITHUB_TOKEN) h.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
   return h;
 }
@@ -250,7 +256,7 @@ async function execConsultarGithub(args) {
       recentRepos: data.repos.slice(0, limit),
     };
   } catch (err) {
-    return { ok: false, error: "github-unavailable", detail: String(err?.message ?? err) };
+    return { ok: false, error: 'github-unavailable', detail: String(err?.message ?? err) };
   }
 }
 
@@ -258,24 +264,26 @@ async function execConsultarGithub(args) {
 // Returns a booking link from env (CALENDAR_URL, e.g. a Cal.com link) when set,
 // otherwise falls back to email scheduling. Works today; drop in the link later.
 function execAgendarLlamada() {
-  return { ok: true, method: "link", schedulingUrl: CALENDAR_URL, email: CONTACT_EMAIL };
+  return {
+    ok: true, method: 'link', schedulingUrl: CALENDAR_URL, email: CONTACT_EMAIL,
+  };
 }
 
 // ─── Executor: agendar_reunion ───────────────────────────────────────────────
 // Records a meeting request and emails both sides. If CALENDAR_URL (e.g. a
 // Cal.com link) is set, the client email also offers instant self-booking.
 async function execAgendarReunion(args, { locale } = {}) {
-  const name = String(args?.name ?? "").trim().slice(0, 120);
-  const email = String(args?.email ?? "").trim().slice(0, 200);
-  const preferred = String(args?.preferred_time ?? "").trim().slice(0, 300);
-  const topic = String(args?.topic ?? "").trim().slice(0, 500) || t(locale, "an intro call", "una llamada inicial");
+  const name = String(args?.name ?? '').trim().slice(0, 120);
+  const email = String(args?.email ?? '').trim().slice(0, 200);
+  const preferred = String(args?.preferred_time ?? '').trim().slice(0, 300);
+  const topic = String(args?.topic ?? '').trim().slice(0, 500) || t(locale, 'an intro call', 'una llamada inicial');
 
   if (!name || !email || !preferred) {
-    return { ok: false, error: "missing-fields", need: ["name", "email", "preferred_time"] };
+    return { ok: false, error: 'missing-fields', need: ['name', 'email', 'preferred_time'] };
   }
-  if (!isEmail(email)) return { ok: false, error: "invalid-email" };
+  if (!isEmail(email)) return { ok: false, error: 'invalid-email' };
 
-  console.log("MEETING REQUEST captured:", maskEmail(email));
+  console.log('MEETING REQUEST captured:', maskEmail(email));
 
   const calUrl = CALENDAR_URL;
 
@@ -283,12 +291,12 @@ async function execAgendarReunion(args, { locale } = {}) {
   const notifyBody = renderEmail({
     heading: `Meeting request: ${name}`,
     preheader: `${preferred} — ${topic}`,
-    paragraphs: ["Reply to this email to confirm with the client."],
+    paragraphs: ['Reply to this email to confirm with the client.'],
     details: [
-      { label: "Name", value: name },
-      { label: "Email", value: email },
-      { label: "Preferred time", value: preferred },
-      { label: "Topic", value: topic },
+      { label: 'Name', value: name },
+      { label: 'Email', value: email },
+      { label: 'Preferred time', value: preferred },
+      { label: 'Topic', value: topic },
     ],
   });
   const notify = await sendEmail({
@@ -301,8 +309,8 @@ async function execAgendarReunion(args, { locale } = {}) {
 
   // Confirm to the client (their language), branded, with a booking button.
   const confirmBody = renderEmail({
-    heading: t(locale, "Your meeting request", "Tu solicitud de reunión"),
-    preheader: t(locale, "Diego will confirm the time shortly.", "Diego confirmará el horario en breve."),
+    heading: t(locale, 'Your meeting request', 'Tu solicitud de reunión'),
+    preheader: t(locale, 'Diego will confirm the time shortly.', 'Diego confirmará el horario en breve.'),
     paragraphs: [
       t(
         locale,
@@ -310,18 +318,18 @@ async function execAgendarReunion(args, { locale } = {}) {
         `Hola ${name}, ¡gracias! Recibimos tu solicitud de reunión. Diego te confirmará el horario final por correo en breve.`,
       ),
       calUrl
-        ? t(locale, "Prefer to pick an exact slot now? Use the button below.", "¿Prefieres elegir un horario exacto ya? Usa el botón de abajo.")
-        : "",
+        ? t(locale, 'Prefer to pick an exact slot now? Use the button below.', '¿Prefieres elegir un horario exacto ya? Usa el botón de abajo.')
+        : '',
     ].filter(Boolean),
     details: [
-      { label: t(locale, "Topic", "Tema"), value: topic },
-      { label: t(locale, "Preferred time", "Horario preferido"), value: preferred },
+      { label: t(locale, 'Topic', 'Tema'), value: topic },
+      { label: t(locale, 'Preferred time', 'Horario preferido'), value: preferred },
     ],
-    button: calUrl ? { label: t(locale, "Book a time", "Reservar horario"), url: calUrl } : undefined,
+    button: calUrl ? { label: t(locale, 'Book a time', 'Reservar horario'), url: calUrl } : undefined,
   });
   await sendEmail({
     to: email,
-    subject: t(locale, "Your meeting request — HNavas Systems", "Tu solicitud de reunión — HNavas Systems"),
+    subject: t(locale, 'Your meeting request — HNavas Systems', 'Tu solicitud de reunión — HNavas Systems'),
     html: confirmBody.html,
     text: confirmBody.text,
   });
@@ -330,7 +338,7 @@ async function execAgendarReunion(args, { locale } = {}) {
     ok: true,
     emailed: notify.ok,
     bookingUrl: calUrl || undefined,
-    message: "Meeting request emailed to the client and Diego; Diego will confirm the final time.",
+    message: 'Meeting request emailed to the client and Diego; Diego will confirm the final time.',
   };
 }
 
@@ -345,18 +353,18 @@ async function execAgendarReunion(args, { locale } = {}) {
 export async function executeTool(name, args, ctx = {}) {
   try {
     switch (name) {
-      case "crear_lead":
+      case 'crear_lead':
         return await execCrearLead(args, ctx);
-      case "consultar_github":
+      case 'consultar_github':
         return await execConsultarGithub(args);
-      case "agendar_llamada":
+      case 'agendar_llamada':
         return execAgendarLlamada();
-      case "agendar_reunion":
+      case 'agendar_reunion':
         return await execAgendarReunion(args, ctx);
       default:
-        return { ok: false, error: "unknown-tool", name };
+        return { ok: false, error: 'unknown-tool', name };
     }
   } catch (err) {
-    return { ok: false, error: "tool-failed", detail: String(err?.message ?? err) };
+    return { ok: false, error: 'tool-failed', detail: String(err?.message ?? err) };
   }
 }

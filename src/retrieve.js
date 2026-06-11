@@ -17,14 +17,14 @@
 //     site's existing demo fallback).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import OpenAI from "openai";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import OpenAI from 'openai';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
 // MUST match the model used in build.mjs — vectors from different models live
 // in different spaces and are not comparable.
-const EMBED_MODEL = process.env.EMBED_MODEL ?? "text-embedding-3-small";
+const EMBED_MODEL = process.env.EMBED_MODEL ?? 'text-embedding-3-small';
 const TOP_K = Number(process.env.RAG_TOP_K ?? 5); // how many chunks to return
 const MIN_SCORE = Number(process.env.RAG_MIN_SCORE ?? 0.2); // drop weak matches
 
@@ -35,7 +35,7 @@ const client = apiKey ? new OpenAI({ apiKey }) : null;
 let INDEX = null;
 try {
   const here = dirname(fileURLToPath(import.meta.url));
-  const raw = readFileSync(join(here, "knowledge", "knowledge.json"), "utf8");
+  const raw = readFileSync(join(here, 'knowledge', 'knowledge.json'), 'utf8');
   const parsed = JSON.parse(raw);
   if (Array.isArray(parsed.records) && parsed.records.length) {
     INDEX = parsed;
@@ -45,10 +45,10 @@ try {
       );
     }
   } else {
-    console.warn("⚠ knowledge.json has no records — RAG disabled until you run: npm run build:knowledge");
+    console.warn('⚠ knowledge.json has no records — RAG disabled until you run: npm run build:knowledge');
   }
 } catch {
-  console.warn("⚠ knowledge.json not found — RAG disabled until you run: npm run build:knowledge");
+  console.warn('⚠ knowledge.json not found — RAG disabled until you run: npm run build:knowledge');
 }
 
 export const isRagReady = () => Boolean(INDEX && client);
@@ -59,7 +59,7 @@ function cosine(a, b) {
   let dot = 0;
   let na = 0;
   let nb = 0;
-  for (let i = 0; i < a.length; i++) {
+  for (let i = 0; i < a.length; i += 1) {
     dot += a[i] * b[i];
     na += a[i] * a[i];
     nb += b[i] * b[i];
@@ -74,24 +74,29 @@ function cosine(a, b) {
  * @param {string} locale    "en" | "es" — restricts results to that language.
  * @returns {Promise<Array<{ id:string, category:string, text:string, score:number }>>}
  */
-export async function retrieve(question, locale = "en") {
-  if (!isRagReady() || typeof question !== "string" || !question.trim()) return [];
+export async function retrieve(question, locale = 'en') {
+  if (!isRagReady() || typeof question !== 'string' || !question.trim()) return [];
 
   let queryVec;
   try {
-    const res = await client.embeddings.create({ model: EMBED_MODEL, input: question.slice(0, 2000) });
+    const res = await client.embeddings.create({
+      model: EMBED_MODEL,
+      input: question.slice(0, 2000),
+    });
     queryVec = res.data[0]?.embedding;
   } catch (err) {
-    console.error("retrieve embedding failed:", err?.message ?? err);
+    console.error('retrieve embedding failed:', err?.message ?? err);
     return []; // agent answers without context rather than failing the request
   }
   if (!queryVec) return [];
 
-  const lang = locale === "es" ? "es" : "en";
+  const lang = locale === 'es' ? 'es' : 'en';
 
   return INDEX.records
     .filter((r) => r.locale === lang)
-    .map((r) => ({ id: r.id, category: r.category, text: r.text, score: cosine(queryVec, r.vector) }))
+    .map((r) => ({
+      id: r.id, category: r.category, text: r.text, score: cosine(queryVec, r.vector),
+    }))
     .filter((r) => r.score >= MIN_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, TOP_K);

@@ -1,12 +1,14 @@
-import OpenAI from "openai";
-import { retrieve } from "./retrieve.js";
-import { TOOL_SCHEMAS, executeTool } from "./tools.js";
-import { loadMemory, saveMemory, memoryToPrompt, distill } from "./memory.js";
+import OpenAI from 'openai';
+import { retrieve } from './retrieve.js';
+import { TOOL_SCHEMAS, executeTool } from './tools.js';
+import {
+  loadMemory, saveMemory, memoryToPrompt, distill,
+} from './memory.js';
 
 // Cheapest reliable model — the user explicitly chose lowest cost for this demo.
 // gpt-4o-mini is ~$0.15/$0.60 per 1M tokens; a reply is a fraction of a cent.
 // Override with AGENT_MODEL to use an even cheaper/newer mini model later.
-const MODEL = process.env.AGENT_MODEL ?? "gpt-4o-mini";
+const MODEL = process.env.AGENT_MODEL ?? 'gpt-4o-mini';
 
 // The API key lives ONLY here, server-side (never NEXT_PUBLIC_, never in the
 // browser or the repo). The client only knows this service's URL.
@@ -56,21 +58,91 @@ const MAX_TOOL_ROUNDS = 3; // max tool round-trips before forcing a text reply
 function normalizeMessages(messages) {
   if (!Array.isArray(messages)) return [];
   return messages
-    .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+    .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
     .slice(-MAX_HISTORY)
     .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
 }
 
+// Distill + persist what we learned this turn. Best-effort: only runs when a
+// visitorId is present, and never throws (memory must not break the reply).
+async function rememberTurn({
+  visitorId, prior, userMsg, assistantMsg, leadFacts,
+}) {
+  if (!visitorId) return;
+  try {
+    const updated = await distill({
+      client, model: MODEL, prior, userMsg, assistantMsg, leadFacts,
+    });
+    await saveMemory(visitorId, updated);
+  } catch (err) {
+    console.error('rememberTurn failed:', err?.message ?? err);
+  }
+}
+
+// Execute one model-proposed tool call (arguments validated server-side) and
+// shape the result as the `tool` message the model expects. Also surfaces the
+// lead details when crear_lead succeeded, so they can be folded into memory.
+async function runToolCall(call, locale) {
+  let args = {};
+  try {
+    args = JSON.parse(call.function?.arguments || '{}');
+  } catch {
+    args = {};
+  }
+  const name = call.function?.name;
+  const result = await executeTool(name, args, { locale });
+  return {
+    message: { role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) },
+    leadFacts: name === 'crear_lead' && result?.ok ? args : null,
+  };
+}
+
+// One model round-trip, recursing while the model keeps requesting tools.
+// On the final allowed round, tools are disabled so the model must answer in
+// text — the recursion is therefore bounded by MAX_TOOL_ROUNDS (cost/latency
+// guard: a misbehaving model can never loop forever).
+async function runToolRounds({
+  convo, round, locale, leadFacts,
+}) {
+  const lastRound = round === MAX_TOOL_ROUNDS;
+  const completion = await client.chat.completions.create({
+    model: MODEL,
+    max_tokens: MAX_TOKENS,
+    messages: convo,
+    tools: lastRound ? undefined : TOOL_SCHEMAS,
+    tool_choice: lastRound ? undefined : 'auto',
+  });
+
+  const msg = completion.choices?.[0]?.message;
+  const calls = msg?.tool_calls ?? [];
+
+  // No tool requested → this is the final natural-language reply.
+  if (calls.length === 0) {
+    return { reply: msg?.content?.trim() || '…', leadFacts };
+  }
+
+  // The model proposed one or more tool calls. Record its turn, then execute
+  // them (independent of each other, so in parallel) and append the results.
+  convo.push(msg);
+  const outcomes = await Promise.all(calls.map((call) => runToolCall(call, locale)));
+  outcomes.forEach((outcome) => convo.push(outcome.message));
+  const capturedLead = outcomes.map((outcome) => outcome.leadFacts).find(Boolean) ?? leadFacts;
+
+  return runToolRounds({
+    convo, round: round + 1, locale, leadFacts: capturedLead,
+  });
+}
+
 export async function generateReply({ messages, locale, visitorId }) {
-  if (!client) throw new Error("agent-not-configured");
+  if (!client) throw new Error('agent-not-configured');
 
   const history = normalizeMessages(messages);
-  if (history.length === 0) throw new Error("no-messages");
-  if (history[history.length - 1].role !== "user") throw new Error("last-message-must-be-user");
+  if (history.length === 0) throw new Error('no-messages');
+  if (history[history.length - 1].role !== 'user') throw new Error('last-message-must-be-user');
 
   // The page UI locale is only a default for the first greeting — every reply
   // mirrors the language the visitor actually writes in (see the language rule).
-  const lang = locale === "es" ? "Spanish (Español)" : "English";
+  const lang = locale === 'es' ? 'Spanish (Español)' : 'English';
 
   // RAG: pull the chunks most relevant to the visitor's latest question and
   // inject them as grounding. If retrieval is unavailable (no index / no key /
@@ -80,9 +152,9 @@ export async function generateReply({ messages, locale, visitorId }) {
   const hits = await retrieve(lastUserMsg, locale);
   const context = hits.length
     ? `\n\nRelevant context (retrieved from Diego's real content — ground your answer in this):\n${hits
-        .map((h) => `- ${h.text}`)
-        .join("\n")}`
-    : "";
+      .map((h) => `- ${h.text}`)
+      .join('\n')}`
+    : '';
 
   // Long-term memory: recall what we know about this returning visitor (if any)
   // and inject it. Missing/failed memory just yields "" — never blocks the chat.
@@ -93,74 +165,22 @@ export async function generateReply({ messages, locale, visitorId }) {
   // append their results, then we ask the model again to phrase the final reply.
   const convo = [
     {
-      role: "system",
+      role: 'system',
       content: `${SYSTEM_PROMPT}${context}${memoryBlock}\n\nSite UI language: ${lang} (default for the first greeting only). For every reply, mirror the language of the visitor's latest message.`,
     },
     ...history,
   ];
 
-  // Structured facts captured for free when the crear_lead tool succeeds — folded
+  // Tool-calling rounds: the model may ask to run tools (trip 1); we execute
+  // them, feed the results back, and let it answer (trip 2). `leadFacts` are
+  // the structured facts captured for free when crear_lead succeeds — folded
   // into the distilled memory (the "hybrid" half that costs nothing extra).
-  let leadFacts = null;
+  const { reply, leadFacts } = await runToolRounds({
+    convo, round: 0, locale, leadFacts: null,
+  });
 
-  // Tool-calling loop. The model may ask to run a tool (trip 1); we execute it,
-  // feed the result back, and let it answer (trip 2). MAX_TOOL_ROUNDS caps this
-  // so a misbehaving model can never loop forever (cost/latency guard — the
-  // "differentiated rate limiting for agent traffic" idea from the design).
-  for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-    const lastRound = round === MAX_TOOL_ROUNDS;
-    const completion = await client.chat.completions.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
-      messages: convo,
-      // On the final allowed round, force a text answer (no more tools).
-      tools: lastRound ? undefined : TOOL_SCHEMAS,
-      tool_choice: lastRound ? undefined : "auto",
-    });
-
-    const msg = completion.choices?.[0]?.message;
-    const calls = msg?.tool_calls ?? [];
-
-    // No tool requested → this is the final natural-language reply.
-    if (calls.length === 0) {
-      const reply = msg?.content?.trim() || "…";
-      await rememberTurn({ visitorId, prior: memory, userMsg: lastUserMsg, assistantMsg: reply, leadFacts });
-      return reply;
-    }
-
-    // The model proposed one or more tool calls. Record its turn, then execute
-    // each one (validated server-side) and append the results.
-    convo.push(msg);
-    for (const call of calls) {
-      let args = {};
-      try {
-        args = JSON.parse(call.function?.arguments || "{}");
-      } catch {
-        args = {};
-      }
-      const result = await executeTool(call.function?.name, args, { locale });
-      // Capture lead details for memory when the lead was actually saved.
-      if (call.function?.name === "crear_lead" && result?.ok) leadFacts = args;
-      convo.push({
-        role: "tool",
-        tool_call_id: call.id,
-        content: JSON.stringify(result),
-      });
-    }
-  }
-
-  // Shouldn't be reached (last round forces a text answer), but stay safe.
-  return "…";
-}
-
-// Distill + persist what we learned this turn. Best-effort: only runs when a
-// visitorId is present, and never throws (memory must not break the reply).
-async function rememberTurn({ visitorId, prior, userMsg, assistantMsg, leadFacts }) {
-  if (!visitorId) return;
-  try {
-    const updated = await distill({ client, model: MODEL, prior, userMsg, assistantMsg, leadFacts });
-    await saveMemory(visitorId, updated);
-  } catch (err) {
-    console.error("rememberTurn failed:", err?.message ?? err);
-  }
+  await rememberTurn({
+    visitorId, prior: memory, userMsg: lastUserMsg, assistantMsg: reply, leadFacts,
+  });
+  return reply;
 }

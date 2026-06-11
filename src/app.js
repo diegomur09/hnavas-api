@@ -1,12 +1,12 @@
-import express from "express";
-import cors from "cors";
-import { generateReply, isConfigured } from "./agent.js";
-import { emailLead } from "./tools.js";
-import { isEmail } from "./email.js";
+import express from 'express';
+import cors from 'cors';
+import { generateReply, isConfigured } from './agent.js';
+import { emailLead } from './tools.js';
+import { isEmail } from './email.js';
 
-export const app = express();
+const app = express();
 
-app.use(express.json({ limit: "64kb" }));
+app.use(express.json({ limit: '64kb' }));
 
 // CORS. The site's own origins are ALWAYS allowed (defaulted in code) so the
 // custom domain works regardless of the ALLOWED_ORIGINS env var — which only
@@ -14,19 +14,19 @@ app.use(express.json({ limit: "64kb" }));
 // origins can still be added via ALLOWED_ORIGINS (comma-separated); "*" or no
 // value allows everything (local/dev convenience).
 const SITE_ORIGINS = [
-  "https://hnavasystems.com",
-  "https://www.hnavasystems.com",
-  "https://d6o054dnj9ven.cloudfront.net", // prod CloudFront
-  "https://dpfbof69kqlws.cloudfront.net", // qa CloudFront
+  'https://hnavasystems.com',
+  'https://www.hnavasystems.com',
+  'https://d6o054dnj9ven.cloudfront.net', // prod CloudFront
+  'https://dpfbof69kqlws.cloudfront.net', // qa CloudFront
 ];
 const envRaw = process.env.ALLOWED_ORIGINS;
-const envOrigins = (envRaw ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-const allowAll = !envRaw || envOrigins.includes("*");
-const allowed = [...new Set([...SITE_ORIGINS, ...envOrigins.filter((o) => o !== "*")])];
+const envOrigins = (envRaw ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+const allowAll = !envRaw || envOrigins.includes('*');
+const allowed = [...new Set([...SITE_ORIGINS, ...envOrigins.filter((o) => o !== '*')])];
 app.use(
   cors({
     origin: allowAll ? true : allowed,
-    methods: ["POST", "GET", "OPTIONS"],
+    methods: ['POST', 'GET', 'OPTIONS'],
   }),
 );
 
@@ -48,22 +48,24 @@ function rateLimited(ip) {
 }
 
 function clientIp(req) {
-  const fwd = req.headers["x-forwarded-for"];
-  if (typeof fwd === "string" && fwd.length) return fwd.split(",")[0].trim();
-  return req.ip || "unknown";
+  const fwd = req.headers['x-forwarded-for'];
+  if (typeof fwd === 'string' && fwd.length) return fwd.split(',')[0].trim();
+  return req.ip || 'unknown';
 }
 
-app.get("/health", (_req, res) => {
-  res.json({ ok: true, agent: isConfigured() ? "ready" : "not-configured" });
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, agent: isConfigured() ? 'ready' : 'not-configured' });
 });
 
-app.post("/chat", async (req, res) => {
+app.post('/chat', async (req, res) => {
   if (rateLimited(clientIp(req))) {
-    return res.status(429).json({ error: "rate-limited" });
+    res.status(429).json({ error: 'rate-limited' });
+    return;
   }
   if (!isConfigured()) {
     // Frontend falls back to its built-in demo replies on a non-200.
-    return res.status(503).json({ error: "agent-not-configured" });
+    res.status(503).json({ error: 'agent-not-configured' });
+    return;
   }
 
   try {
@@ -71,21 +73,26 @@ app.post("/chat", async (req, res) => {
     const reply = await generateReply({ messages, locale, visitorId });
     res.json({ reply });
   } catch (err) {
-    console.error("chat error:", err?.message ?? err);
-    res.status(500).json({ error: "agent-failed" });
+    console.error('chat error:', err?.message ?? err);
+    res.status(500).json({ error: 'agent-failed' });
   }
 });
 
-app.post("/contact", async (req, res) => {
+app.post('/contact', async (req, res) => {
   if (rateLimited(clientIp(req))) {
-    return res.status(429).json({ error: "rate-limited" });
+    res.status(429).json({ error: 'rate-limited' });
+    return;
   }
-  const { name, email, project, locale } = req.body ?? {};
+  const {
+    name, email, project, locale,
+  } = req.body ?? {};
   if (!name || !email || !project) {
-    return res.status(400).json({ error: "missing-fields" });
+    res.status(400).json({ error: 'missing-fields' });
+    return;
   }
   if (!isEmail(email)) {
-    return res.status(400).json({ error: "invalid-email" });
+    res.status(400).json({ error: 'invalid-email' });
+    return;
   }
 
   // Same path as the agent's crear_lead tool: email Diego + acknowledge the
@@ -98,7 +105,7 @@ app.post("/contact", async (req, res) => {
       locale,
     });
   } catch (err) {
-    console.error("contact emailLead failed:", err?.message ?? err);
+    console.error('contact emailLead failed:', err?.message ?? err);
   }
   res.json({ ok: true });
 });

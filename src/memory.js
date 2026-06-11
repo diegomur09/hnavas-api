@@ -16,11 +16,11 @@
 // rather than breaking the chat.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 
-const TABLE = process.env.MEMORY_TABLE ?? "hnavas-agent-memory";
-const REGION = process.env.AWS_REGION ?? "us-east-1";
+const TABLE = process.env.MEMORY_TABLE ?? 'hnavas-agent-memory';
+const REGION = process.env.AWS_REGION ?? 'us-east-1';
 const TTL_DAYS = 90; // profiles expire 90 days after the last visit
 const MAX_FACTS = 8; // keep the profile compact (research: distill, don't dump)
 
@@ -38,13 +38,13 @@ export async function loadMemory(visitorId) {
     const res = await ddb.send(new GetCommand({ TableName: TABLE, Key: { visitorId } }));
     return res.Item ?? null;
   } catch (err) {
-    console.error("memory load failed:", err?.message ?? err);
+    console.error('memory load failed:', err?.message ?? err);
     return null; // agent just runs without memory
   }
 }
 
 /** Persist a visitor's memory with a refreshed TTL. */
-export async function saveMemory(visitorId, { facts = [], summary = "" } = {}) {
+export async function saveMemory(visitorId, { facts = [], summary = '' } = {}) {
   if (!visitorId) return;
   const ttl = Math.floor(Date.now() / 1000) + TTL_DAYS * 86400;
   try {
@@ -61,15 +61,15 @@ export async function saveMemory(visitorId, { facts = [], summary = "" } = {}) {
       }),
     );
   } catch (err) {
-    console.error("memory save failed:", err?.message ?? err);
+    console.error('memory save failed:', err?.message ?? err);
   }
 }
 
 /** Turn stored memory into a short block for the system prompt (or ""). */
 export function memoryToPrompt(mem) {
-  if (!mem || (!mem.summary && !(mem.facts?.length))) return "";
-  const facts = mem.facts?.length ? `\nKnown facts:\n${mem.facts.map((f) => `- ${f}`).join("\n")}` : "";
-  const summary = mem.summary ? `\n${mem.summary}` : "";
+  if (!mem || (!mem.summary && !(mem.facts?.length))) return '';
+  const facts = mem.facts?.length ? `\nKnown facts:\n${mem.facts.map((f) => `- ${f}`).join('\n')}` : '';
+  const summary = mem.summary ? `\n${mem.summary}` : '';
   return `\n\nWhat you remember about this RETURNING visitor (greet them accordingly, don't re-ask what you already know):${summary}${facts}`;
 }
 
@@ -78,45 +78,47 @@ export function memoryToPrompt(mem) {
  * also folds in structured lead facts when present). Returns {facts, summary}.
  * On any error, returns the prior memory unchanged.
  */
-export async function distill({ client, model, prior, userMsg, assistantMsg, leadFacts }) {
-  const base = { facts: prior?.facts ?? [], summary: prior?.summary ?? "" };
+export async function distill({
+  client, model, prior, userMsg, assistantMsg, leadFacts,
+}) {
+  const base = { facts: prior?.facts ?? [], summary: prior?.summary ?? '' };
   if (!client) return base;
 
   const lead = leadFacts
     ? `\nSTRUCTURED (from lead capture, treat as confirmed): ${JSON.stringify(leadFacts)}`
-    : "";
+    : '';
 
   try {
     const completion = await client.chat.completions.create({
       model,
       max_tokens: 220,
-      response_format: { type: "json_object" },
+      response_format: { type: 'json_object' },
       messages: [
         {
-          role: "system",
+          role: 'system',
           content:
-            'You maintain a concise memory profile of a returning website visitor for a sales agent. ' +
-            'Given the PRIOR memory and the LATEST exchange, output the UPDATED memory as JSON: ' +
-            '{"facts": string[], "summary": string}. Rules: facts are short, stable, deduplicated bullets ' +
-            '(name, business/industry, preferred language, budget, what they want to build, email if shared) — ' +
-            'max 8. summary is 1-2 sentences on who they are and what they want. Only include things actually ' +
-            'stated; never invent. Merge new info with prior, dropping nothing still relevant. Output ONLY the JSON.',
+            'You maintain a concise memory profile of a returning website visitor for a sales agent. '
+            + 'Given the PRIOR memory and the LATEST exchange, output the UPDATED memory as JSON: '
+            + '{"facts": string[], "summary": string}. Rules: facts are short, stable, deduplicated bullets '
+            + '(name, business/industry, preferred language, budget, what they want to build, email if shared) — '
+            + 'max 8. summary is 1-2 sentences on who they are and what they want. Only include things actually '
+            + 'stated; never invent. Merge new info with prior, dropping nothing still relevant. Output ONLY the JSON.',
         },
         {
-          role: "user",
+          role: 'user',
           content:
-            `PRIOR MEMORY:\nfacts: ${JSON.stringify(base.facts)}\nsummary: ${base.summary || "(none)"}\n\n` +
-            `LATEST EXCHANGE:\nVisitor: ${userMsg}\nAgent: ${assistantMsg}${lead}`,
+            `PRIOR MEMORY:\nfacts: ${JSON.stringify(base.facts)}\nsummary: ${base.summary || '(none)'}\n\n`
+            + `LATEST EXCHANGE:\nVisitor: ${userMsg}\nAgent: ${assistantMsg}${lead}`,
         },
       ],
     });
 
-    const parsed = JSON.parse(completion.choices?.[0]?.message?.content ?? "{}");
-    const facts = Array.isArray(parsed.facts) ? parsed.facts.filter((f) => typeof f === "string") : base.facts;
-    const summary = typeof parsed.summary === "string" ? parsed.summary : base.summary;
+    const parsed = JSON.parse(completion.choices?.[0]?.message?.content ?? '{}');
+    const facts = Array.isArray(parsed.facts) ? parsed.facts.filter((f) => typeof f === 'string') : base.facts;
+    const summary = typeof parsed.summary === 'string' ? parsed.summary : base.summary;
     return { facts, summary };
   } catch (err) {
-    console.error("memory distill failed:", err?.message ?? err);
+    console.error('memory distill failed:', err?.message ?? err);
     return base; // keep prior memory
   }
 }
