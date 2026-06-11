@@ -18,6 +18,8 @@
 import {
   sendEmail, renderEmail, NOTIFY_EMAIL, isEmail,
 } from './email.js';
+import captureSiteLead from './services/lead-capture.js';
+import { LEAD_SOURCES } from './constants.js';
 
 const CONTACT_EMAIL = 'hnavasystems@gmail.com';
 
@@ -161,7 +163,8 @@ export async function emailLead({
 }
 
 // ─── Executor: crear_lead ────────────────────────────────────────────────────
-// Validates, then emails the lead (same path the contact form uses).
+// Validates, then emails the lead (same path the contact form uses) and stores
+// it in the admin lead inbox (best-effort — never fails the chat).
 async function execCrearLead(args, { locale } = {}) {
   const name = String(args?.name ?? '').trim().slice(0, 120);
   const email = String(args?.email ?? '').trim().slice(0, 200);
@@ -176,6 +179,9 @@ async function execCrearLead(args, { locale } = {}) {
 
   const { emailed } = await emailLead({
     name, email, project, locale,
+  });
+  await captureSiteLead({
+    name, email, project, locale, source: LEAD_SOURCES.AGENT,
   });
   return {
     ok: true,
