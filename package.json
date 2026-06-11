@@ -6,7 +6,9 @@
   "description": "AI agent + contact backend for HNavas Systems. Runs locally (Express) and on AWS Lambda (Function URL via serverless-http).",
   "main": "src/lambda.js",
   "scripts": {
-    "dev": "node src/local.js",
+    "start": "node --env-file-if-exists=.env src/local.js",
+    "dev": "node --watch --env-file-if-exists=.env src/local.js",
+    "lint": "eslint .",
     "build:knowledge": "node --env-file=.env src/knowledge/build.mjs",
     "package": "npm ci --omit=dev"
   },
@@ -18,5 +20,10 @@
     "express": "^4.21.2",
     "openai": "^4.77.0",
     "serverless-http": "^3.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.32.0"
   }
 }

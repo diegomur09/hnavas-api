@@ -17,9 +17,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Lint (airbnb-base) — fails the build before anything reaches Lambda.
+      - run: npx eslint .
       # Syntax-check every source file (no API key needed, never calls OpenAI).
       - run: |
-          for f in src/*.js; do node --check "$f"; done
+          for f in src/*.js src/knowledge/*.js src/knowledge/*.mjs; do node --check "$f"; done
 
   deploy:
     needs: build

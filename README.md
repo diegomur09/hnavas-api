@@ -131,11 +131,13 @@ its **own** OpenAI key. See [ENVIRONMENTS.md](./ENVIRONMENTS.md).
 
 ```bash
 npm install
-cp .env.example .env                 # put your OPENAI_API_KEY in .env (git-ignored)
-node --env-file=.env src/local.js    # http://localhost:3001/health
+cp .env.example .env   # put your OPENAI_API_KEY in .env (git-ignored)
+npm run dev            # hot reload — http://localhost:3000/health
 ```
 
-No key? Leave `OPENAI_API_KEY` unset and the site's chat falls back to demo replies.
+`npm run start` runs the same server without hot reload. Both load `.env` if it
+exists and run fine without one — no key? The site's chat falls back to demo
+replies. `npm run lint` checks the code style (ESLint, airbnb-base).
 
 ## Deployment
 
