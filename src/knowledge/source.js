@@ -75,8 +75,8 @@ export const CHUNKS = [
   {
     id: 'service-integrations',
     category: 'service',
-    en: 'Service — Payments & CRM Integrations: Square payments, webhooks, Salesforce Experience Cloud and customer self-service portals connected end to end. Proof: Square payments processed for 200+ customers.',
-    es: 'Servicio — Integraciones de pagos & CRM: pagos con Square, webhooks, Salesforce Experience Cloud y portales de autoservicio conectados de punta a punta. Prueba: pagos con Square procesados para 200+ clientes.',
+    en: 'Service — Payments & CRM Integrations: Square payments, webhooks, Salesforce Experience Cloud and customer self-service portals connected end to end. Proof: Square payments processed for 200+ customers, plus a Salesforce Service Cloud support portal built for an enterprise client.',
+    es: 'Servicio — Integraciones de pagos & CRM: pagos con Square, webhooks, Salesforce Experience Cloud y portales de autoservicio conectados de punta a punta. Prueba: pagos con Square procesados para 200+ clientes, y un portal de soporte en Salesforce Service Cloud construido para un cliente enterprise.',
   },
   {
     id: 'service-seo',
@@ -101,7 +101,7 @@ export const CHUNKS = [
     es: 'Agentes de IA: Diego construye agentes de IA de producción (servicio al cliente y automatización de negocio) con arquitectura moderna y segura — un LLM para razonar, un bucle RAG que ancla cada respuesta en tu contenido real para que no alucine, una capa de acción aparte que llama tus APIs/CRM de forma segura, y memoria para conversaciones multiturno y personalizadas con traspaso a un humano cuando hace falta. Seguridad primero: las keys y secretos nunca se exponen al modelo, los accesos son acotados (OAuth 2.1 / herramientas MCP) y las peticiones tienen rate limiting. Prueba viva: el agente bilingüe con el que hablas ahora mismo — RAG sobre el contenido real de Diego más tool-calling, corriendo en AWS Lambda.',
   },
 
-  // ── Projects (10) ─────────────────────────────────────────────────────────
+  // ── Projects (11) ─────────────────────────────────────────────────────────
   {
     id: 'project-scoreflow',
     category: 'project',
@@ -125,6 +125,12 @@ export const CHUNKS = [
     category: 'project',
     en: 'Project — Email Campaign Manager (emails.dynamicbachata.com, 2026), a full email-marketing platform: manage contacts, generate campaigns with AI and automate bulk delivery, built for a studio on AWS. Architecture: a React + Vite app on AWS Amplify behind a Cognito-secured HTTP API, with Node Lambdas drafting copy through OpenRouter AI and sending via Amazon SES — all on DynamoDB with prod/QA isolation. Result: a self-serve tool that drafts AI campaigns and sends them in bulk, replacing a paid email SaaS with owned infrastructure.',
     es: 'Proyecto — Email Campaign Manager (emails.dynamicbachata.com, 2026), una plataforma completa de email marketing: gestiona contactos, genera campañas con IA y automatiza el envío masivo, construida para un estudio sobre AWS. Arquitectura: una app React + Vite en AWS Amplify detrás de una HTTP API protegida con Cognito, con Lambdas en Node que redactan copy vía OpenRouter AI y envían por Amazon SES — todo sobre DynamoDB con aislamiento prod/QA. Resultado: una herramienta self-serve que redacta campañas con IA y las envía de forma masiva, reemplazando un SaaS de email de pago con infraestructura propia.',
+  },
+  {
+    id: 'project-salesforce-portal',
+    category: 'project',
+    en: "Project — Salesforce Support Portal (2026), a Salesforce Service Cloud and Experience Cloud implementation for an enterprise mining-technology company (the client is not named publicly, so no brand or URL). What it does: support emails become Cases automatically through Email-to-Case, with branded auto-acknowledgements and reply threading; customers open and track their own cases in a self-service Experience Cloud portal; and Cases route to the right support queue. Diego also handled the admin side: user provisioning, profiles and permissions, queue membership, org-wide email addresses, and sandbox to production deployment. Delivery included a scripted UAT the client's own support team ran before sign-off. Stack: Salesforce, Service Cloud, Experience Cloud, Email-to-Case, Flows, sandbox + production orgs. This is Diego's enterprise CRM work, alongside the AWS and AI projects.",
+    es: 'Proyecto — Portal de soporte en Salesforce (2026), una implementación de Salesforce Service Cloud y Experience Cloud para una empresa enterprise de tecnología para minería (el cliente no se nombra públicamente, sin marca ni URL). Qué hace: los correos de soporte se convierten en Casos automáticamente vía Email-to-Case, con acuses de recibo con marca y threading de respuestas; los clientes abren y siguen sus propios casos en un portal de autoservicio en Experience Cloud; y los casos se enrutan a la cola de soporte correcta. Diego también se encargó del lado admin: alta de usuarios, perfiles y permisos, membresía de colas, direcciones org-wide y el despliegue de sandbox a producción. La entrega incluyó un UAT guionizado que el propio equipo de soporte del cliente ejecutó antes del sign-off. Stack: Salesforce, Service Cloud, Experience Cloud, Email-to-Case, Flows, orgs sandbox + producción. Este es el trabajo enterprise de CRM de Diego, junto a los proyectos de AWS e IA.',
   },
   {
     id: 'project-bachata-crm',
