@@ -12,11 +12,37 @@ const {
   ADMIN_EMAIL,
   ALLOWED_ORIGINS,
   PORT,
+  // Set automatically by the Lambda runtime on every function; absent locally.
+  AWS_LAMBDA_FUNCTION_NAME,
 } = process.env;
 
-// In production the secret MUST come from the environment (never from git).
-// In development the code runs and signs tokens with a throwaway dev key.
-export const jwtSecret = NODE_ENV === 'production' && JWT_SECRET ? JWT_SECRET : 'dev-secret-not-for-production';
+// "Are we running for real?" — true in any Lambda, or when NODE_ENV says so.
+// This deliberately does NOT rely on NODE_ENV alone: the prod Lambda never had
+// it set, which is exactly how it silently fell back to the throwaway dev key
+// (a public value in this repo) to sign real JWTs. Presence in Lambda is the
+// signal that cannot be forgotten.
+const isRuntime = Boolean(AWS_LAMBDA_FUNCTION_NAME) || NODE_ENV === 'production';
+
+// The JWT signing secret. In any real runtime it MUST come from the environment
+// and be non-trivial; there is no safe default. We fail closed at startup
+// rather than serve requests with a guessable/public secret. Local development
+// (no Lambda, no NODE_ENV=production) keeps a throwaway key so the server runs
+// with no .env at all.
+const DEV_JWT_SECRET = 'dev-secret-not-for-production';
+
+function resolveJwtSecret() {
+  if (!isRuntime) return DEV_JWT_SECRET;
+  if (!JWT_SECRET || JWT_SECRET.trim().length < 32 || JWT_SECRET === DEV_JWT_SECRET) {
+    throw new Error(
+      'JWT_SECRET is missing, too short (<32 chars), or the public dev value. '
+      + 'Set a strong JWT_SECRET on this environment before it can serve auth. '
+      + 'Refusing to start with an insecure signing key.',
+    );
+  }
+  return JWT_SECRET;
+}
+
+export const jwtSecret = resolveJwtSecret();
 
 export const region = AWS_REGION ?? 'us-east-1';
 export const usersTable = USERS_TABLE ?? 'hnavas-users';
