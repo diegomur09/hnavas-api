@@ -32,6 +32,12 @@ export const CHUNKS = [
     en: "HNavas Systems is the studio of Diego Navas Murcia, a bilingual (English/Spanish) Full-Stack & Cloud Engineer based in Denver / Broomfield, Colorado, with three years building software that runs in production. He works natively with AWS (Lambda, DynamoDB, SES, S3, CloudFront, Cognito, API Gateway) and builds automation directly against the Claude and OpenAI APIs. Being bilingual EN/ES lets him serve Denver's businesses and its Hispanic market without losing anything in translation. Contact: hnavasystems@gmail.com.",
     es: 'HNavas Systems es el estudio de Diego Navas Murcia, ingeniero Full-Stack & Cloud bilingüe (inglés/español) basado en Denver / Broomfield, Colorado, con tres años construyendo software que corre en producción. Trabaja de forma nativa con AWS (Lambda, DynamoDB, SES, S3, CloudFront, Cognito, API Gateway) y construye automatización directamente contra las APIs de Claude y OpenAI. Ser bilingüe EN/ES le permite atender a los negocios de Denver y a su mercado hispano sin perder nada en la traducción. Contacto: hnavasystems@gmail.com.',
   },
+  {
+    id: 'service-areas-colorado',
+    category: 'brand',
+    en: 'Service areas in Colorado: HNavas Systems provides custom software development, AWS cloud systems and AI automation across the entire Denver Metro area and Colorado. Key cities served include Denver (Downtown, RiNo, Cherry Creek, Tech Center), Boulder, Lakewood, Aurora (including Anschutz Medical Campus), Broomfield (Interlocken), Westminster, Arvada, Thornton, and Centennial. Diego works in-person locally when helpful and remotely across Colorado and the United States.',
+    es: 'Áreas de servicio en Colorado: HNavas Systems ofrece desarrollo de software a medida, sistemas en la nube AWS y automatización con IA en toda el área metropolitana de Denver y Colorado. Las principales ciudades atendidas incluyen Denver (Downtown, RiNo, Cherry Creek, Tech Center), Boulder, Lakewood, Aurora (incluyendo Anschutz Medical Campus), Broomfield (Interlocken), Westminster, Arvada, Thornton y Centennial. Diego trabaja en persona localmente cuando ayuda y de forma remota en todo Colorado y Estados Unidos.',
+  },
 
   // ── Production footprint / headline stats ─────────────────────────────────
   {

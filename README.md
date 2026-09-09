@@ -35,7 +35,7 @@ generation (RAG), instead of relying on a hand-written summary in the prompt.
 
 ```
 source.js  ──(build.mjs, run once)──▶  knowledge.json  ──(retrieve.js)──▶  top-k chunks
-  notes            embed each chunk          text + vectors      cosine search per question
+  notes            embed each chunk          text + vectors      hybrid search per question
 ```
 
 - **`src/knowledge/source.js`** — the human-authored notes (one chunk per
@@ -43,13 +43,37 @@ source.js  ──(build.mjs, run once)──▶  knowledge.json  ──(retrieve
 - **`npm run build:knowledge`** — embeds every chunk with
   `text-embedding-3-small` (1536-dim) and writes `src/knowledge/knowledge.json`.
   Re-run whenever `source.js` changes. Cost: a fraction of a cent per rebuild.
-- **`src/retrieve.js`** — on each `/chat`, embeds the question and returns the
-  most similar chunks (cosine similarity); `agent.js` injects them as grounding.
+- **`src/retrieve.js`** — on each `/chat`, runs a **hybrid search**: cosine
+  similarity over the embeddings (meaning) blended with BM25 over the words
+  (exact names like "ScoreFlow" or "AppSheet", which embeddings blur), then
+  hands the top-k to `agent.js` as grounding.
 
-**Graceful by design:** if `knowledge.json` is missing or `OPENAI_API_KEY` is
-unset, retrieval returns nothing and the agent falls back to its base summary —
-the chat never fails because of RAG. The index is a plain in-memory JSON (no
+**Relevance vs ranking.** These are decided separately, on purpose. What gets
+in is judged on *absolute* scores: cosine ≥ `RAG_MIN_SCORE`, or a raw BM25 ≥
+`RAG_LEX_MIN` to rescue an exact name the embedding missed. Only the ordering
+uses the blended score, whose lexical half is normalised against the best match
+in the set. Normalised scores must never gate: dividing by the best match puts
+the top chunk at 1.0 however weak it is, so a question about the weather in
+Tokyo would retrieve the contact chunk with a perfect score.
+
+**Graceful by design:** if `knowledge.json` is missing, retrieval returns
+nothing and the agent falls back to its base summary. If the embedding call
+fails or `OPENAI_API_KEY` is unset, it degrades to lexical-only and keeps just
+unambiguous keyword hits (`RAG_LEX_MIN`), returning nothing rather than noise.
+The chat never fails because of RAG. The index is a plain in-memory JSON (no
 vector database needed at this scale).
+
+| Variable | Default | What it does |
+|---|---|---|
+| `RAG_TOP_K` | `5` | Chunks handed to the model |
+| `RAG_MIN_SCORE` | `0.2` | Minimum cosine for a chunk to be considered relevant |
+| `RAG_LEX_MIN` | `4` | Raw BM25 that rescues an exact keyword match, and the only gate while embeddings are down |
+| `RAG_SEMANTIC_WEIGHT` | `0.65` | Weight of meaning in the ranking blend |
+| `RAG_LEXICAL_WEIGHT` | `0.35` | Weight of words in the ranking blend |
+
+> `RAG_LEX_MIN` was calibrated against this index: with stopwords filtered,
+> off-topic questions peak at 3.56 raw BM25 while real keyword lookups reach
+> 4.4 (ScoreFlow) to 6.7 (Baychata).
 
 > First-time setup: `npm run build:knowledge` (needs `OPENAI_API_KEY` in `.env`).
 > The model used here must match `EMBED_MODEL` in `retrieve.js`.
