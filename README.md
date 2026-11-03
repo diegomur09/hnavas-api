@@ -24,9 +24,10 @@ locally with Express and on **AWS Lambda** (Function URL) via `serverless-http`.
 | POST   | `/chat`    | `{ messages: [{role,content}], locale }`   | `{ reply }` |
 | POST   | `/contact` | `{ name, email, project }`                 | `{ ok: true }` |
 
-Model: **`gpt-4o-mini`** (cheapest reliable option; override with `AGENT_MODEL`).
+Model: **`gpt-6-luna`** with reasoning off (`none`, the only effort Luna accepts with
+function tools on chat completions; override with `AGENT_MODEL`).
 Guards: per-IP rate limit (20 req / 10 min), history capped to 12 turns, replies
-capped at 400 tokens — so the token budget stays bounded.
+capped at 600 tokens, so the token budget stays bounded.
 
 ## Knowledge / RAG
 
@@ -115,7 +116,7 @@ into a graceful in-chat message.
           │  (hnavas-web,      │   │  hnavas-api (Node + Express)  │
           │  Next.js static)   │   │        │                      │
           └────────────────────┘   │        ▼                      │
-                                    │  OpenAI API (gpt-4o-mini)     │
+                                    │  OpenAI API (gpt-6-luna)      │
                                     └──────────────────────────────┘
 ```
 

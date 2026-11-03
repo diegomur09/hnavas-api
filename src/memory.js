@@ -91,7 +91,9 @@ export async function distill({
   try {
     const completion = await client.chat.completions.create({
       model,
-      max_tokens: 220,
+      // A short JSON summary needs no reasoning; "none" keeps it fast and cheap.
+      max_completion_tokens: 600,
+      reasoning_effort: 'none',
       response_format: { type: 'json_object' },
       messages: [
         {

@@ -20,7 +20,7 @@ environment configuration (or `backend/.env` for local dev).
 | `OPENAI_API_KEY`  | **separate QA key**             | **separate prod key**        |
 | `JWT_SECRET`      | **required, ≥32 random chars**  | **required, ≥32 random chars** |
 | `ALLOWED_ORIGINS` | `https://qa.hnavasystems.com`   | `https://hnavasystems.com`   |
-| `AGENT_MODEL`     | `gpt-4o-mini` (optional)         | `gpt-4o-mini` (optional)      |
+| `AGENT_MODEL`     | `gpt-6-luna` (optional)          | `gpt-6-luna` (optional)       |
 
 > Generate **two** OpenAI keys (one per environment) so usage/limits are
 > isolated. Put the QA key on the QA Lambda, the prod key on the prod Lambda.

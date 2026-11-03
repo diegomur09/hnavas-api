@@ -5,10 +5,15 @@ import {
   loadMemory, saveMemory, memoryToPrompt, distill,
 } from './memory.js';
 
-// Cheapest reliable model — the user explicitly chose lowest cost for this demo.
-// gpt-4o-mini is ~$0.15/$0.60 per 1M tokens; a reply is a fraction of a cent.
-// Override with AGENT_MODEL to use an even cheaper/newer mini model later.
-const MODEL = process.env.AGENT_MODEL ?? 'gpt-4o-mini';
+// GPT-6 Luna: the same low-cost model the Dynamic Bachata email app uses
+// (~$0.10/$0.50 per 1M tokens at Nov 2026 list prices, cheaper than the
+// gpt-4o-mini it replaced; OpenRouter announced gpt-4o-mini retires on
+// 14 Jan 2027). Override with
+// AGENT_MODEL. Reasoning stays "none": on /v1/chat/completions Luna rejects
+// function tools with any other effort (400, verified 3 Nov 2026), and the
+// agent always offers tools. Reasoning would need a move to /v1/responses.
+const MODEL = process.env.AGENT_MODEL ?? 'gpt-6-luna';
+const REASONING_EFFORT = process.env.AGENT_REASONING ?? 'none';
 
 // The API key lives ONLY here, server-side (never NEXT_PUBLIC_, never in the
 // browser or the repo). The client only knows this service's URL.
@@ -44,6 +49,7 @@ Contact: hnavasystems@gmail.com.
 
 Rules:
 - Be concise (2-4 sentences), friendly, concrete and helpful.
+- Never use em dashes (—) or en dashes (–); use commas, periods or parentheses instead.
 - Ground every answer in the "Relevant context" provided below when it is present — prefer those exact facts, projects and numbers over your own memory.
 - Pricing is always custom per scope. Never quote exact prices; give a rough range only if pressed, and always offer to connect the visitor with Diego.
 - You can take real actions with tools: capture a lead (crear_lead) once you have a name + email + project description; book a meeting (agendar_reunion) when the visitor is ready — collect their name, email, preferred time and topic; look up Diego's live GitHub activity (consultar_github); or just share how to reach Diego (agendar_llamada). crear_lead and agendar_reunion send real confirmation emails to the visitor and notify Diego, so naturally ask for an email when it's missing. Use the tools instead of only describing them, but never claim a lead/meeting was saved or read a GitHub number unless the tool result actually says so.
@@ -51,7 +57,7 @@ Rules:
 - Always reply in the SAME language the visitor is writing in: detect it from their latest message and mirror it (Spanish → Spanish, English → English). Diego's service is fully bilingual EN/ES — never refuse a language or say you only speak one.`;
 
 const MAX_HISTORY = 12; // cap context so cost/latency stay bounded
-const MAX_TOKENS = 400; // short chat replies
+const MAX_COMPLETION_TOKENS = 600; // short chat replies (reasoning is off)
 const MAX_TOOL_ROUNDS = 3; // max tool round-trips before forcing a text reply
 
 // Keep only the recent turns, coerce to the API shape, drop empties.
@@ -107,7 +113,8 @@ async function runToolRounds({
   const lastRound = round === MAX_TOOL_ROUNDS;
   const completion = await client.chat.completions.create({
     model: MODEL,
-    max_tokens: MAX_TOKENS,
+    max_completion_tokens: MAX_COMPLETION_TOKENS,
+    reasoning_effort: REASONING_EFFORT,
     messages: convo,
     tools: lastRound ? undefined : TOOL_SCHEMAS,
     tool_choice: lastRound ? undefined : 'auto',
