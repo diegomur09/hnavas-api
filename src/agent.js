@@ -69,6 +69,22 @@ function normalizeMessages(messages) {
     .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
 }
 
+// Luna occasionally writes the same answer twice, reworded, as two paragraphs
+// (seen 1 time in 15 on 3 Nov 2026). When a reply is exactly two blocks of
+// 15+ words that share most of their words, keep the first. Anything else
+// (lists, a reply that really has two parts) is returned untouched.
+const wordSet = (s) => new Set(s.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []);
+
+function dropRepeatedAnswer(text) {
+  const blocks = text.split(/\n+/).map((b) => b.trim()).filter(Boolean);
+  if (blocks.length !== 2) return text;
+  const [a, b] = blocks.map(wordSet);
+  const smaller = Math.min(a.size, b.size);
+  if (smaller < 15) return text;
+  const shared = [...a].filter((w) => b.has(w)).length;
+  return shared / smaller >= 0.5 ? blocks[0] : text;
+}
+
 // Distill + persist what we learned this turn. Best-effort: only runs when a
 // visitorId is present, and never throws (memory must not break the reply).
 async function rememberTurn({
@@ -125,7 +141,7 @@ async function runToolRounds({
 
   // No tool requested → this is the final natural-language reply.
   if (calls.length === 0) {
-    return { reply: msg?.content?.trim() || '…', leadFacts };
+    return { reply: dropRepeatedAnswer(msg?.content?.trim() || '…'), leadFacts };
   }
 
   // The model proposed one or more tool calls. Record its turn, then execute
