@@ -46,6 +46,13 @@ export const validateChat = celebrate({
   }),
 });
 
+export const validateSpeak = celebrate({
+  [Segments.BODY]: Joi.object().keys({
+    text: Joi.string().required().max(4000),
+    token: Joi.string().required().max(100),
+  }),
+});
+
 export const validateContact = celebrate({
   [Segments.BODY]: Joi.object().keys({
     name: Joi.string().required().min(2).max(120),

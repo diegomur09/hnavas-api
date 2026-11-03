@@ -21,7 +21,8 @@ locally with Express and on **AWS Lambda** (Function URL) via `serverless-http`.
 | Method | Path       | Body                                       | Returns |
 |--------|------------|--------------------------------------------|---------|
 | GET    | `/health`  | —                                          | `{ ok, agent }` |
-| POST   | `/chat`    | `{ messages: [{role,content}], locale }`   | `{ reply }` |
+| POST   | `/chat`    | `{ messages: [{role,content}], locale }`   | `{ reply, speakToken }` |
+| POST   | `/speak`   | `{ text, token }` (a `/chat` reply + its `speakToken`) | `{ audio, lang }` (MP3 as base64) |
 | POST   | `/contact` | `{ name, email, project }`                 | `{ ok: true }` |
 
 Model: **`gpt-6-luna`** with reasoning off (`none`, the only effort Luna accepts with
@@ -100,6 +101,18 @@ Emails go through **Amazon SES** (`src/email.js`) from `noreply@hnavasystems.com
 (no Lambda env var needed). Every executor is defensive and returns
 `{ ok: false, error }` instead of throwing, so a failing tool (or email) degrades
 into a graceful in-chat message.
+
+## Voice (Amazon Polly)
+
+The site can read any agent reply aloud. `/chat` returns a `speakToken` (an HMAC
+of the exact reply, keyed from `JWT_SECRET`) and `/speak` only synthesizes text
+whose token matches, so the endpoint can't be used as free text-to-speech for
+arbitrary input. `src/speech.js` picks the voice from the reply's own language
+(the agent mirrors the visitor, not the page): **Pedro** for Spanish, **Matthew**
+for English, both on Polly's **neural** engine (~$16 per 1M characters, about
+half a cent per reply). Markdown and URLs are stripped first and each reply is
+capped at 1,500 characters. The Lambda role needs `polly:SynthesizeSpeech`
+(inline policy `hnavas-agent-polly-speak` on `hnavas-lambda-exec`).
 
 ## System design
 

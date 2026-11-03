@@ -11,6 +11,7 @@ export const MESSAGES = {
   NOT_FOUND: 'Requested resource not found',
   SERVER_ERROR: 'An error occurred on the server',
   RATE_LIMITED: 'Too many requests, please try again later',
+  NOT_AN_AGENT_REPLY: 'Only replies written by the agent can be read aloud',
 };
 
 export const ROLES = {

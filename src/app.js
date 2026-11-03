@@ -4,8 +4,10 @@ import { errors } from 'celebrate';
 import { corsOrigin } from './config.js';
 import rateLimit from './middlewares/rate-limit.js';
 import errorHandler from './middlewares/error-handler.js';
-import { validateChat, validateContact } from './middlewares/validation.js';
-import { health, chat, contact } from './controllers/agent.js';
+import { validateChat, validateContact, validateSpeak } from './middlewares/validation.js';
+import {
+  health, chat, speak, contact,
+} from './controllers/agent.js';
 import router from './routes/index.js';
 
 const app = express();
@@ -16,9 +18,10 @@ app.use(cors({
   methods: ['POST', 'GET', 'DELETE', 'OPTIONS'],
 }));
 
-// Public site endpoints (anonymous visitors): status, AI chat, contact form.
+// Public site endpoints (anonymous visitors): status, AI chat, read-aloud, contact form.
 app.get('/health', health);
 app.post('/chat', rateLimit, validateChat, chat);
+app.post('/speak', rateLimit, validateSpeak, speak);
 app.post('/contact', rateLimit, validateContact, contact);
 
 // Auth + lead-inbox API (signup/signin public, the rest behind JWT).
